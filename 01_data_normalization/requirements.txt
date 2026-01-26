@@ -1,0 +1,8 @@
+ipykernel==7.1.0
+ipython==9.9.0
+ipython_pygments_lexers==1.1.1
+jupyter_client==8.8.0
+jupyter_core==5.9.1
+numpy==2.4.1
+pandas==2.3.3
+pandasql==0.7.3
