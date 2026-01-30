@@ -13,8 +13,6 @@ import pandas as pd
 import numpy as np
 import re
 import os
-import zipfile
-import shutil
 from pathlib import Path
 
 # ============================================================================
@@ -125,28 +123,6 @@ def normalize_dataset(csv_name, data_path, output_dir, skip_dimension_export=Fal
     # ========================================================================
     # 4. EXPORTACIÓN DE DATOS NORMALIZADOS (si no se deben saltear)
     # ========================================================================
-    # if not skip_dimension_export:
-    #     print("\nExportando datos normalizados...")
-        
-    #     # Crear directorio de salida
-    #     ref_name = csv_name.replace('.csv', '')
-    #     extract_dir = output_dir / ref_name# output_dir  ref_name + '/'
-    #     print(extract_dir)
-    #     if not os.path.exists(extract_dir):
-    #         os.makedirs(extract_dir)
-        
-    #     # Guardar dataset principal
-    #     df.to_csv(extract_dir / csv_name, index=False)
-    #     print(f"  ✓ Dataset principal guardado: {csv_name}")
-        
-    #     # Guardar tablas de dimensiones
-    #     for name, dim_df in dimension_tables.items():
-    #         file_name = f'{name}.csv'
-    #         dim_df.to_csv(extract_dir / file_name, index=False)
-    #         print(f"  ✓ Tabla de dimensiones guardada: {file_name}")
-        
-    #     print(f"\nDatos guardados en: {extract_dir}")
-
     print("\nExportando datos normalizados...")
     
     # Crear directorio de salida
@@ -284,6 +260,7 @@ def apply_overlap_corrections(output_dir):
         }
     }
     
+    # Aplicar mapeos
     for col_name, mapping in mappings_prev_app.items():
         if col_name in previous_application.columns:
             previous_application[col_name] = previous_application[col_name].replace(mapping)
@@ -294,6 +271,7 @@ def apply_overlap_corrections(output_dir):
     # ========================================================================
     print("\n4. Exportando datos corregidos y dimensiones de referencia...")
     
+    # Crear directorio common_dims si no existe
     common_dims_dir = output_dir / 'common_dims'
     if not os.path.exists(common_dims_dir):
         os.makedirs(common_dims_dir)
@@ -316,15 +294,6 @@ def apply_overlap_corrections(output_dir):
     print("  ✓ dim_name_type_suite.csv exportado")
     
     print(f"\nDatos corregidos guardados en: {output_dir}")
-    
-    # # Crear archivo zip
-    # zip_path = output_dir + 'overlap_fix.zip'
-    # with zipfile.ZipFile(zip_path, 'w', zipfile.ZIP_DEFLATED) as zipf:
-    #     for root, dirs, files in os.walk(overlap_dir):
-    #         for file in files:
-    #             file_path = os.path.join(root, file)
-    #             zipf.write(file_path, os.path.relpath(file_path, os.path.dirname(overlap_dir)))
-    # print(f"✓ Archivo comprimido creado: overlap_fix.zip")
 
 
 def main():
@@ -334,11 +303,6 @@ def main():
     BASE_DIR = Path(__file__).resolve().parent # Obtiene la carpeta donde está el script, sin importar desde dónde lo lances
     data_path = BASE_DIR / ".." / ".." / "data" / "raw"
     output_dir = BASE_DIR / ".." / ".." / "data" / "db_input"
-    # # ruta_datos = BASE_DIR / "datos" / "archivo.csv"
-    # data_path = '../../data/raw/'
-    # output_dir = '../../db_input/'    
-    # print(data_path)
-    # print(output_dir)
 
     # Datasets a procesar (sin application_train y previous_application)
     datasets_standard = [

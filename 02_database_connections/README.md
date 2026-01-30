@@ -493,3 +493,5 @@ GRANT CREATE, INSERT ON database_name.* TO 'usuario'@'localhost';
 - `mysql-connector-python`: Conexión a MySQL
 - `pandas`: Lectura y procesamiento de CSV
 - `numpy`: Manejo de datos numéricos
+
+NOTA: En un entorno de producción se recomienda SQLAlchemy para esta parte

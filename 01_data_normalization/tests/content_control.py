@@ -13,12 +13,15 @@ Las pruebas incluyen:
 3. Comparación de valores
 """
 
+# ============================================================================
+# IMPORTACION DE LIBRERIAS
+# ============================================================================
+
 import pandas as pd
 import numpy as np
 import os
 from pathlib import Path
 from pandasql import sqldf
-
 
 # ============================================================================
 # CONFIGURACIÓN
@@ -144,7 +147,9 @@ def denormalize_dataset(dataframes, main_table, common_tables=None):
     # Si hay tablas comunes, incluirlas en el contexto de la query
     if main_table in COMMON_DIM_LOOKUP and common_tables:
         dataframes.update(common_tables)
+    
     query = build_denormalized_query(dataframes, main_table)
+
     return sqldf(query, dataframes)
 
 def validate_structure(original_df, result_df, table_name):
@@ -166,6 +171,7 @@ def validate_structure(original_df, result_df, table_name):
     print(f"Shape original:   {original_df.shape}")
     print(f"Shape resultado:  {result_df.shape}")
     
+    # Validar número de filas
     if original_df.shape[0] != result_df.shape[0]:
         print(f"[ERROR] Número de filas diferente")
         return False
@@ -274,6 +280,7 @@ def run_tests(table_names=None):
         table_names (list): Lista de nombres de tablas a probar. 
                            Si es None, usa LOOKUP_TABLES.
     """
+    # Configurar tablas a probar
     if table_names is None:
         table_names = LOOKUP_TABLES
     
@@ -285,13 +292,12 @@ def run_tests(table_names=None):
     print(f"\nCargando dimensiones comunes...")
     common_tables = load_dataframes(OUTPUT_DIR, COMMON_DIM_DIR)
     
+    # Verificar carga de tablas comunes
     if not common_tables:
         raise Exception(f"No se pudieron cargar las tablas de dimensiones comunes desde {COMMON_DIM_DIR}")
     else:
         print(f"Dimensiones comunes cargados desde {COMMON_DIM_DIR}")
     
-    # print(f"[OK] {len(common_tables)} archivos cargados")
-
     results = {}
 
     for table_name in table_names:
@@ -363,6 +369,7 @@ def run_tests(table_names=None):
     
     return results
 
-
+# ============================================================================
+# EJECUCIÓN DEL SCRIPT
 if __name__ == '__main__':
     run_tests()
