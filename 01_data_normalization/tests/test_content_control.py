@@ -27,14 +27,19 @@ from pandasql import sqldf
 # Obtener la carpeta actual del script
 BASE_DIR = Path(__file__).resolve().parent.parent
 
+# Rutas de datos
 LOOKUP_TABLES = ['application_train', 'bureau', 'previous_application']
+COMMON_DIM_LOOKUP = ['application_train', 'previous_application']
+COMMON_DIM_TABLES = ['dim_name_contract_type',
+                     'dim_name_type_suite',
+                     'dim_weekday_appr_process_start'
+                     ]
+COMMON_DIM_DIR = 'common_dims'
 OUTPUT_DIR = BASE_DIR / '..' / 'data' / 'db_input'
-# DATA_DIR = BASE_DIR / 'data'
 RAW_DATA_DIR = BASE_DIR / '..' / 'data' / 'raw'
 
 # Columnas a excluir en comparación (se transforman en normalización)
 EXCLUDE_COLUMNS = ['ORGANIZATION_TYPE', 'ORGANIZATION_TYPE_2']
-
 
 # ============================================================================
 # FUNCIONES AUXILIARES
@@ -124,20 +129,23 @@ def build_denormalized_query(dataframes, main_table):
     return query
 
 
-def denormalize_dataset(dataframes, main_table):
+def denormalize_dataset(dataframes, main_table, common_tables=None):
     """
     Desnormaliza un dataset ejecutando la query construida.
     
     Args:
         dataframes (dict): Diccionario de DataFrames.
         main_table (str): Nombre de la tabla principal.
+        common_tables (dict, optional): Diccionario de tablas comunes a incluir.
     
     Returns:
         pd.DataFrame: DataFrame desnormalizado.
     """
+    # Si hay tablas comunes, incluirlas en el contexto de la query
+    if main_table in COMMON_DIM_LOOKUP and common_tables:
+        dataframes.update(common_tables)
     query = build_denormalized_query(dataframes, main_table)
     return sqldf(query, dataframes)
-
 
 def validate_structure(original_df, result_df, table_name):
     """
@@ -193,7 +201,8 @@ def validate_columns(original_df, result_df, table_name):
     # Verificar columnas en resultado que no están en original
     for col in result_df.columns:
         if col not in original_df.columns:
-            print(f"[WARNING] Columna '{col}' presente en resultado pero no en original")
+            if col not in EXCLUDE_COLUMNS:
+                print(f"[WARNING] Columna '{col}' presente en resultado pero no en original")
     
     if not errors:
         print(f"[OK] Columnas validadas")
@@ -271,9 +280,20 @@ def run_tests(table_names=None):
     print("\n" + "="*70)
     print("CONTROL DE CONTENIDO - DATASETS NORMALIZADOS")
     print("="*70)
+
+    # Cargar tablas de dimensiones comunes
+    print(f"\nCargando dimensiones comunes...")
+    common_tables = load_dataframes(OUTPUT_DIR, COMMON_DIM_DIR)
     
+    if not common_tables:
+        raise Exception(f"No se pudieron cargar las tablas de dimensiones comunes desde {COMMON_DIM_DIR}")
+    else:
+        print(f"Dimensiones comunes cargados desde {COMMON_DIM_DIR}")
+    
+    # print(f"[OK] {len(common_tables)} archivos cargados")
+
     results = {}
-    
+
     for table_name in table_names:
         print(f"\n\n{'#'*70}")
         print(f"# PROCESANDO: {table_name}")
@@ -293,7 +313,7 @@ def run_tests(table_names=None):
             
             # Desnormalizar para comparación
             print(f"Desnormalizando dataset...")
-            result_df = denormalize_dataset(dataframes, table_name)
+            result_df = denormalize_dataset(dataframes, table_name, common_tables)
             
             # Cargar dataset original
             print(f"Cargando dataset original...")
