@@ -1,30 +1,30 @@
-# CSV MySQL Connector
-
-Una herramienta en Python para automatizar la carga de datos desde archivos CSV a una base de datos MySQL, incluyendo funcionalidades de creación automática de esquemas, validación de integridad de datos y control de sincronización entre archivos y tablas.
+# Módulo 02: Database Connections
 
 ## Descripción General
 
-Este proyecto proporciona dos utilidades principales:
-
-1. **`main.py`**: Carga automática de datos CSV a MySQL con creación dinámica de tablas
-2. **`table_names_control.py`**: Validación y control de sincronización entre archivos CSV y tablas de base de datos
+Herramienta en Python para automatizar la carga de datos desde archivos CSV a una base de datos MySQL, incluyendo funcionalidades de creación automática de esquemas, validación de integridad de datos y control de sincronización entre archivos y tablas.
 
 ## Estructura del Proyecto
 
 ```
 02_database_connections/
 ├── src/
-│   └── main.py                    # Script principal de carga
-├── utils/
-│   └── table_names_control.py     # Script de validación y control
-├── data/                          # Carpeta de datos CSV
-├── requirements.txt               # Dependencias
-└── README.md                      # Este archivo
+│   ├── __main__.py                 # Script principal de carga
+│   └── ...
+├── tests/
+│   ├── test_db_connection.py       # Verificación de conectividad
+│   ├── test_table_names.py         # Validación de sincronización
+│   ├── test_integrity.py           # Verificación de integridad
+│   └── __init__.py
+├── data/
+│   └── db_input/                   # Carpeta de datos CSV
+├── requirements.txt                # Dependencias
+└── README.md                       # Este archivo
 ```
 
 ## Requisitos
 
-- Python 3.8+ recomendado
+- Python 3.8+
 - Acceso a un servidor MySQL (local o remoto)
 - Servidor MySQL con permisos de creación de bases de datos
 
@@ -44,19 +44,17 @@ source .venv/bin/activate
 pip install -r requirements.txt
 ```
 
-## Uso General
+## Preparación de Datos
 
-### Paso 1: Preparar datos CSV
-
-Coloca tus archivos CSV en la carpeta `data/` al nivel superior de `src`:
+Coloca tus archivos CSV en la carpeta `data/db_input/`:
 
 ```
 02_database_connections/
 ├── data/
-│   ├── application_train.csv
-│   ├── bureau.csv
-│   └── ...
-└── src/
+│   └── db_input/
+│       ├── application_train.csv
+│       ├── bureau.csv
+│       └── ...
 ```
 
 **Requisitos del CSV:**
@@ -67,30 +65,36 @@ Coloca tus archivos CSV en la carpeta `data/` al nivel superior de `src`:
 
 ---
 
-## 1. `main.py` - Script Principal de Carga
+## Script Principal: src/__main__.py
 
 ### Descripción
 
-El script `main.py` automatiza el proceso completo de carga de datos CSV a MySQL:
+Automatiza el proceso completo de carga de datos CSV a MySQL:
 
 1. **Conexión a la base de datos**: Se conecta al servidor MySQL
 2. **Creación de base de datos**: Crea la BD si no existe
-3. **Detección de archivos**: Busca todos los archivos `.csv` en la carpeta `data/`
+3. **Detección de archivos**: Busca todos los archivos `.csv` en la carpeta `data/db_input/`
 4. **Creación automática de tablas**: Infiere tipos de datos y crea tablas
 5. **Carga de datos**: Importa los datos usando `LOAD DATA LOCAL INFILE` (carga masiva optimizada)
 
-### Funcionamiento Detallado
+### Funcionamiento
 
 #### Paso 1: Configuración de Conexión
+
 ```bash
-python src/main.py --host 127.0.0.1 --user root --password password123 --database mi_base_datos
+python -m 02_database_connections \
+  --host 127.0.0.1 \
+  --user root \
+  --password tu_password \
+  --database datos_normalizados
 ```
 
 - Crea la base de datos si no existe
 - Establece la conexión y prepara el cursor
 
 #### Paso 2: Procesamiento de Archivos CSV
-Para cada archivo `.csv` en `data/`:
+
+Para cada archivo `.csv` en `data/db_input/`:
 
 1. **Lectura con Pandas**
    - Lee el CSV completo en memoria
@@ -104,14 +108,6 @@ Para cada archivo `.csv` en `data/`:
      - Otros → `TEXT`
 
 3. **Creación de Tabla**
-   ```sql
-   CREATE TABLE IF NOT EXISTS `nombre_tabla` (
-       `columna1` INT,
-       `columna2` FLOAT,
-       `columna3` TEXT,
-       ...
-   )
-   ```
 
 4. **Limpieza de Datos Previos**
    - `TRUNCATE TABLE` elimina registros anteriores (si la tabla ya existía)
@@ -135,82 +131,15 @@ Para cada archivo `.csv` en `data/`:
 | `--password` | Sí | Contraseña del usuario |
 | `--database` | Sí | Nombre de la BD a crear/usar |
 
-### Flujo de Ejecución
-
-```
-┌─────────────────────────────────────┐
-│ Argumentos de línea de comandos     │
-└────────────────┬────────────────────┘
-                 │
-                 ▼
-┌─────────────────────────────────────┐
-│ Conectar a MySQL                    │
-│ Crear BD si no existe               │
-└────────────────┬────────────────────┘
-                 │
-                 ▼
-┌─────────────────────────────────────┐
-│ Listar archivos CSV en data/        │
-└────────────────┬────────────────────┘
-                 │
-         ┌───────┴────────┐
-         │                │
-    Para cada CSV    No hay archivos
-         │                │
-         ▼                ▼
-    ┌─────────────┐  Mostrar error
-    │ Leer con    │
-    │ Pandas      │
-    └────┬────────┘
-         │
-         ▼
-    ┌──────────────────┐
-    │ Inferir tipos    │
-    │ de datos         │
-    └────┬─────────────┘
-         │
-         ▼
-    ┌──────────────────┐
-    │ Crear tabla      │
-    │ en MySQL         │
-    └────┬─────────────┘
-         │
-         ▼
-    ┌──────────────────┐
-    │ TRUNCATE         │
-    │ (limpiar datos)  │
-    └────┬─────────────┘
-         │
-         ▼
-    ┌──────────────────────────┐
-    │ LOAD DATA LOCAL INFILE   │
-    │ (carga masiva)           │
-    └────┬─────────────────────┘
-         │
-         ▼
-    ┌──────────────────┐
-    │ COMMIT           │
-    │ (confirmar)      │
-    └──────────────────┘
-```
-
 ### Ejemplo de Uso
 
 ```bash
 # Conexión a servidor local
-python src/main.py \
+python -m 02_database_connections \
   --host 127.0.0.1 \
   --user root \
   --password tu_password \
   --database datos_normalizados
-
-# Salida esperada:
-# Base de datos 'datos_normalizados' lista.
-# Procesando application_train.csv...
-# Tabla 'application_train' cargada exitosamente.
-# Procesando bureau.csv...
-# Tabla 'bureau' cargada exitosamente.
-# ...
 ```
 
 ### Notas Importantes
@@ -222,40 +151,43 @@ python src/main.py \
 
 ---
 
-## 2. `table_names_control.py` - Validación de Sincronización
+## Tests
 
-### Descripción
+El módulo incluye tres suites de tests para validar diferentes aspectos de la conexión y carga de datos.
 
-Este script valida la sincronización entre los archivos CSV disponibles y las tablas existentes en la base de datos MySQL. Útil para:
+### test_db_connection.py
 
-- Verificar que todos los CSVs tienen tablas correspondientes
-- Detectar archivos CSV que aún no se han cargado
-- Encontrar tablas huérfanas (sin archivo CSV de origen)
-- Auditoría de datos
+Verifica la conectividad a la base de datos usando dos métodos diferentes:
 
-### Funcionamiento Detallado
+**Métodos probados:**
+- `mysql-connector-python`: Conexión nativa a MySQL
+- `SQLAlchemy`: ORM con driver MySQL
 
-#### Paso 1: Conexión a la Base de Datos
+**Validaciones:**
+- Conexión exitosa al servidor
+- Selección de base de datos
+- Consulta de datos de tabla `application_train`
+
+**Ejecución:**
 ```bash
-python utils/table_names_control.py \
-  --host 127.0.0.1 \
-  --user root \
-  --password password123 \
-  --database mi_base_datos
+python -m pytest tests/test_db_connection.py
+# O directamente:
+python tests/test_db_connection.py
 ```
 
-#### Paso 2: Extracción de Nombres
+---
 
-**De la base de datos:**
-- Ejecuta `SHOW TABLES` para obtener todas las tablas
-- Almacena los nombres en un conjunto (`set`)
+### test_table_names.py
 
-**De la carpeta `data/`:**
-- Busca archivos con extensión `.csv`
-- Extrae el nombre sin la extensión
-- Almacena en un conjunto
+Valida la sincronización entre los archivos CSV disponibles y las tablas existentes en la base de datos MySQL.
 
-#### Paso 3: Análisis Comparativo
+**Funcionalidades:**
+- Verifica que todos los CSVs tienen tablas correspondientes
+- Detecta archivos CSV que aún no se han cargado
+- Encuentra tablas huérfanas (sin archivo CSV de origen)
+- Auditoría de datos
+
+**Análisis comparativo:**
 
 Realiza 3 operaciones de conjuntos:
 
@@ -273,78 +205,16 @@ Realiza 3 operaciones de conjuntos:
    - Causa probable: CSV no ha sido cargado aún
    - Estado: 📂 Pendiente de carga
 
-#### Paso 4: Reporte
-
-Genera un reporte categorizado mostrando:
-
-```
-┌─ RESUMEN DE COMPARACIÓN
-├─ ✅ Coincidencias (n)
-│  ├─ application_train
-│  ├─ bureau
-│  └─ ...
-├─ ⚠️ Tablas en DB sin archivo CSV (n)
-│  ├─ tabla_antigua
-│  └─ ...
-└─ 📂 Archivos CSV sin tabla en DB (n)
-   ├─ nuevo_archivo.csv
-   └─ ...
-```
-
-### Argumentos
-
-Mismos que `main.py`:
-
-| Argumento | Requerido | Descripción |
-|-----------|-----------|-------------|
-| `--host` | Sí | Dirección del servidor MySQL |
-| `--user` | Sí | Usuario de MySQL |
-| `--password` | Sí | Contraseña del usuario |
-| `--database` | Sí | Nombre de la base de datos a verificar |
-
-### Flujo de Ejecución
-
-```
-┌────────────────────────────────┐
-│ Conectar a MySQL               │
-│ Seleccionar BD                 │
-└────────────┬───────────────────┘
-             │
-      ┌──────┴──────┐
-      │             │
-      ▼             ▼
- ┌─────────┐   ┌──────────────┐
- │ SHOW    │   │ Listar CSV   │
- │ TABLES  │   │ en data/     │
- └────┬────┘   └──────┬───────┘
-      │               │
-      ▼               ▼
- ┌──────────────────────────┐
- │ Comparar conjuntos       │
- │ - Coincidencias          │
- │ - Solo en BD             │
- │ - Solo en carpeta        │
- └────┬─────────────────────┘
-      │
-      ▼
- ┌──────────────────────────┐
- │ Mostrar reporte          │
- │ categorizado             │
- └──────────────────────────┘
-```
-
-### Ejemplo de Uso
-
+**Argumentos:**
 ```bash
-python utils/table_names_control.py \
+python tests/test_table_names.py \
   --host 127.0.0.1 \
   --user root \
   --password password123 \
-  --database datos_normalizados
+  --database mi_base_datos
 ```
 
-### Salida Esperada
-
+**Salida esperada:**
 ```
 ──────────────────────────────
 RESUMEN DE COMPARACIÓN
@@ -364,27 +234,39 @@ RESUMEN DE COMPARACIÓN
 📂 Archivos CSV sin tabla en DB (0):
 ```
 
-### Casos de Uso
-
-**Caso 1: Verificación post-carga**
+**Ejecución:**
 ```bash
-# Después de ejecutar main.py, verificar que todo se cargó correctamente
-python utils/table_names_control.py --host 127.0.0.1 --user root --password pwd --database db
+python -m pytest tests/test_table_names.py
+# O directamente con argumentos:
+python tests/test_table_names.py --host 127.0.0.1 --user root --password pwd --database db
 ```
 
-**Caso 2: Detección de datos huérfanos**
-```
-Si ves tablas en "⚠️ Tablas en DB sin archivo CSV", significa que:
-- Alguien creó una tabla manualmente
-- O se eliminó un CSV pero la tabla quedó en la BD
-→ Acción: Considerar eliminar la tabla o buscar el CSV
+---
+
+### test_integrity.py
+
+Control de contenido de tablas verificando integridad comparándolas con archivos fuente.
+
+**Validaciones realizadas:**
+1. **Validación de nombres de tablas**: Compara tablas en BD vs archivos CSV
+2. **Validación de estructura (shape)**: Verifica que filas y columnas coincidan
+3. **Validación de esquema**: Comprueba nombres y orden de columnas
+4. **Comparación de contenido**: Validación celda por celda con tolerancia en decimales
+
+**Argumentos:**
+```bash
+python tests/test_integrity.py \
+  --host 127.0.0.1 \
+  --user root \
+  --password password123 \
+  --database mi_base_datos
 ```
 
-**Caso 3: Carga incompleta**
-```
-Si ves archivos en "📂 Archivos CSV sin tabla en DB", significa que:
-- Hay archivos nuevos que no se han cargado
-→ Acción: Ejecutar main.py nuevamente
+**Ejecución:**
+```bash
+python -m pytest tests/test_integrity.py
+# O directamente con argumentos:
+python tests/test_integrity.py --host 127.0.0.1 --user root --password pwd --database db
 ```
 
 ---
@@ -394,24 +276,31 @@ Si ves archivos en "📂 Archivos CSV sin tabla en DB", significa que:
 ### Escenario típico de uso:
 
 ```bash
-# 1. Preparar archivos CSV en data/
+# 1. Preparar archivos CSV en data/db_input/
 #    (copiar o actualizar archivos)
 
 # 2. Ejecutar carga principal
-python src/main.py \
+python -m 02_database_connections \
   --host 127.0.0.1 \
   --user root \
   --password password123 \
   --database mi_base_datos
 
 # 3. Verificar sincronización
-python utils/table_names_control.py \
+python tests/test_table_names.py \
   --host 127.0.0.1 \
   --user root \
   --password password123 \
   --database mi_base_datos
 
-# 4. Si todo está sincronizado ✅ = fin
+# 4. Validar integridad de datos
+python tests/test_integrity.py \
+  --host 127.0.0.1 \
+  --user root \
+  --password password123 \
+  --database mi_base_datos
+
+# 5. Si todo está sincronizado ✅ = fin
 #    Si hay inconsistencias ⚠️ 📂 = investigar
 ```
 
@@ -483,7 +372,7 @@ GRANT CREATE, INSERT ON database_name.* TO 'usuario'@'localhost';
 - Si ocurre, verifica los permisos de escritura
 
 ### Error: "No such file or directory"
-- Verifica que la carpeta `data/` existe
+- Verifica que la carpeta `data/db_input/` existe
 - Asegúrate de estar en el directorio correcto
 
 ---
@@ -493,5 +382,6 @@ GRANT CREATE, INSERT ON database_name.* TO 'usuario'@'localhost';
 - `mysql-connector-python`: Conexión a MySQL
 - `pandas`: Lectura y procesamiento de CSV
 - `numpy`: Manejo de datos numéricos
+- `sqlalchemy`: ORM y abstracción de BD
+- `python-dotenv`: Manejo de variables de entorno
 
-NOTA: En un entorno de producción se recomienda SQLAlchemy para esta parte

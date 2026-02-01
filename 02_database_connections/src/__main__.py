@@ -3,25 +3,20 @@
 #######################################################
 
 # Importacion de librerias.
-import argparse, os
+import argparse
+import os
 import pandas as pd
-import numpy as np
-import mysql.connector
-from mysql.connector import errorcode
 from pathlib import Path
 from dotenv import load_dotenv
+from sqlalchemy import create_engine, text
+from sqlalchemy.exc import SQLAlchemyError
 
 #######################################################
-# CONFIGURACION
+# CONFIGURACIÓN
 #######################################################
 
-# Obtener la carpeta actual del script
 BASE_DIR = Path(__file__).resolve().parent.parent.parent
-
-# Cargar variables de entorno desde .env
 load_dotenv(BASE_DIR / '.env')
-
-# Rutas de datos
 DATA_PATH = BASE_DIR / 'data' / 'db_input'
 
 ######################################################
@@ -29,96 +24,70 @@ DATA_PATH = BASE_DIR / 'data' / 'db_input'
 ######################################################
 
 def main():
-    # 1. Configuración de argumentos de línea de comandos
-    parser = argparse.ArgumentParser(description="Cargador de CSV a MySQL")
+    # 1. Configuración de argumentos
+    parser = argparse.ArgumentParser(description="Cargador de CSV a MySQL vía SQLAlchemy")
     parser.add_argument("--host", default=os.getenv('DB_HOST', '127.0.0.1'), help="Host de la base de datos")
     parser.add_argument("--user", default=os.getenv('DB_USER', 'root'), help="Usuario")
     parser.add_argument("--password", default=os.getenv('DB_PASSWORD', ''), help="Contraseña")
     parser.add_argument("--database", default=os.getenv('DB_NAME', ''), help="Nombre de la base de datos")
     
     args = parser.parse_args()
-    
-    # # 2. Conexión inicial (para verificar/crear la base de datos)
+
+    # 2. Crear el Engine de SQLAlchemy
+    # Formato: mysql+mysqlconnector://user:password@host/dbname
+    connection_url = f"mysql+mysqlconnector://{args.user}:{args.password}@{args.host}"
+    engine = create_engine(connection_url)
+
+    # 3. Verificar/Crear la base de datos
     try:
-        conn = mysql.connector.connect(
-            host=args.host,
-            # port=3306,
-            user=args.user,
-            password=args.password,
-            allow_local_infile = True # CRUCIAL: Habilitar la carga local de archivos
-        )
-        cursor = conn.cursor()
+        with engine.connect() as conn:
+            conn.execute(text(f"CREATE DATABASE IF NOT EXISTS {args.database}"))
+            conn.execute(text(f"USE {args.database}"))
         
-        # Verificar o crear la base de datos
-        cursor.execute(f"CREATE DATABASE IF NOT EXISTS {args.database}")
-        cursor.execute(f"USE {args.database}")
-        print(f"Base de datos '{args.database}' lista.")
-
-    except mysql.connector.Error as err:
-        print(f"Error de conexión: {err}")
+        # Re-creamos el engine apuntando directamente a la base de datos
+        db_url = f"{connection_url}/{args.database}"
+        engine = create_engine(db_url)
+        print(f"Conectado a la base de datos: '{args.database}'")
+    except SQLAlchemyError as e:
+        print(f"Error de conexión o creación de DB: {e}")
         return
 
-    # 3. Procesar archivos CSV en la carpeta 'data'
-    # Definir la ruta de datos.
-    data_path = DATA_PATH
- 
-    if not os.path.exists(data_path):
-        print(f"Error: La carpeta {data_path} no existe.")
+    # 4. Procesar archivos CSV
+    if not DATA_PATH.exists():
+        print(f"Error: La carpeta {DATA_PATH} no existe.")
         return
 
-    archivos = [f for f in Path(data_path).rglob('*.csv') if f.is_file()]
+    archivos = list(DATA_PATH.rglob('*.csv'))
 
     for archivo in archivos:
-        nombre_archivo = archivo.name
-        if nombre_archivo.endswith('.csv'):            
-            nombre_tabla = archivo.stem.lower()
-                        
-            print(f"Procesando {nombre_archivo}...")
+        nombre_tabla = archivo.stem.lower()
+        print(f"Procesando {archivo.name}...")
+
+        try:
+            # Leer CSV con Pandas
+            df = pd.read_csv(archivo)
+
+            # 5. Cargar en MySQL usando Pandas + SQLAlchemy
+            # 'if_exists="replace"' elimina la tabla y la crea de nuevo con los tipos correctos.
+            # 'index=False' evita que Pandas cree una columna para el índice del DataFrame.
+            # 'chunksize' ayuda si los archivos son muy grandes.
+            df.to_sql(
+                name=nombre_tabla, 
+                con=engine, 
+                if_exists='replace', 
+                index=False,
+                chunksize=1000
+            )
             
-            try:
-                # Leer CSV con Pandas
-                df = pd.read_csv(archivo)  # (ruta_csv)
-                df = df.replace({np.nan: None}) # Reemplaza valores NaN para compatibilidad con MYSQL.
+            print(f"Tabla '{nombre_tabla}' cargada exitosamente ({len(df)} filas).")
 
-                # Crear tabla si no existe (basado en las columnas del DataFrame)
-                columnas = []
-                for col_name, dtype in df.dtypes.items():
-                    sql_type = "TEXT"
-                    if "int" in str(dtype): sql_type = "INT"
-                    elif "float" in str(dtype): sql_type = "FLOAT"
-                    columnas.append(f"`{col_name}` {sql_type}")
-                crear_tabla_sql = f"CREATE TABLE IF NOT EXISTS `{nombre_tabla}` ({', '.join(columnas)})"
-                cursor.execute(crear_tabla_sql)
-                
-                # Limpiar tabla antes de cargar (Opcional, según tu necesidad)
-                cursor.execute(f"TRUNCATE TABLE `{nombre_tabla}`")
-
-                # SQL para la carga masiva
-                query = f"""
-                LOAD DATA LOCAL INFILE '{str(archivo)}'
-                INTO TABLE {nombre_tabla}
-                FIELDS TERMINATED BY ',' 
-                ENCLOSED BY '"'
-                LINES TERMINATED BY '\\n'
-                IGNORE 1 LINES; 
-                """
-                # (Nota: IGNORE 1 LINES se usa si tu CSV tiene encabezados)
-                
-                # Ejecucion de la query.
-                cursor.execute(query)
-                conn.commit()
-                print(f"Tabla '{nombre_tabla}' cargada exitosamente.")
-
-            except Exception as e:
-                print(f"Error procesando {nombre_archivo}: {e}")
+        except Exception as e:
+            print(f"Error procesando {archivo.name}: {e}")
     
-    print("Proceso completado.")
+    print("\nProceso completado.")
 
-    # Cierre del cursor y conexion.
-    if conn.is_connected():
-        cursor.close()
-        conn.close()
-
+######################################################
+# EJECUCIÓN PRINCIPAL
 ######################################################
 
 if __name__ == '__main__':
