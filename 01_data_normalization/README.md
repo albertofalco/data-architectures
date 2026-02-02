@@ -19,45 +19,46 @@ Identificación y resolución de inconsistencias en las 3 tablas de dimensiones 
 
 ## Procesamiento en Fases
 
-El script principal ejecuta 4 fases secuenciales:
+El script principal ejecuta tres fases secuenciales:
 
-### Fase 1: Normalización Estándar
-Procesa 6 datasets sin dependencias:
+### Fase 1: Normalización y optimización de diseño
+Se procesan los datasets almacenados en db_input:
+- `application_train.csv`
 - `application_test.csv`
 - `bureau_balance.csv`
 - `bureau.csv`
 - `credit_card_balance.csv`
 - `installments_payments.csv`
 - `POS_CASH_balance.csv`
+- `previous_application.csv`
 
-Cada dataset genera:
-- Dataset normalizado con IDs en lugar de valores categóricos
-- Tablas de dimensiones en archivos CSV separados
+Se realizan las siguientes transformaciones:
+- Atomización de `ORGANIZATION_TYPE`: se extrae el número de tipo en columna separada y se crea el atributo `ORGANIZATION_TYPE_2`.
+- Se optimizan los datasets reemplazando por IDs en lugar de valores categóricos. Cada atributo categórico se descompone en:
+    - Tabla Principal: Contiene solo IDs (referencias a dimensiones).
+    - Tabla de Dimensión: Mapeo de ID → Valor original.
+- Tablas de dimensiones en archivos CSV separados.
 
-### Fase 2: Normalización con Overlap
-Procesa 2 datasets que comparten dimensiones:
+### Fase 2: Correcciones para datasets con solapamiento de dimensiones:
+Dos datasets comparten algunas dimensiones en común:
 - `application_train.csv`
 - `previous_application.csv`
 
-*Nota: Las dimensiones NO se exportan en esta fase*
-
-### Fase 3: Correcciones de Overlap
-Aplica remapeos de IDs para alinear las dimensiones compartidas:
+Dado que el mapeo realizado por pandas asigna automáticamente valores según el orden en que se suceden a lo largo de cada atributo, se aplican remapeos de IDs para alinar las dimensiones compartidas:
 
 **Para `application_train`:**
-- `NAME_CONTRACT_TYPE_ID`: Mapeo de 2 categorías
-- `WEEKDAY_APPR_PROCESS_START_ID`: Mapeo de 7 días
-- `NAME_TYPE_SUITE_ID`: Mapeo de 7 tipos
+- `NAME_CONTRACT_TYPE_ID`: Mapeo de 2 categorías.
+- `WEEKDAY_APPR_PROCESS_START_ID`: Mapeo de 7 días (1 - MONDAY a 7 - SUNDAY).
+- `NAME_TYPE_SUITE_ID`: Mapeo de 7 tipos.
 
 **Para `previous_application`:**
-- `WEEKDAY_APPR_PROCESS_START_ID`: Mapeo de 7 días
+- `WEEKDAY_APPR_PROCESS_START_ID`: Mapeo de 7 días.
 
 Exporta:
-- Datasets corregidos
-- 3 tablas de dimensiones de referencia estandarizadas
-- Archivo ZIP comprimido (`overlap_fix.zip`)
+- Datasets corregidos.
+- Tres tablas de dimensiones comunes conciliadas con los datasets de referencia.
 
-### Fase 4: Limpieza
+### Fase 3: Limpieza
 Elimina directorios temporales de `application_train` y `previous_application` originales.
 
 ## Estructura de Salida
@@ -72,23 +73,19 @@ data/db_input/
 │   ├── bureau.csv
 │   ├── dim_*.csv
 │   └── ...
-├── ...
-└── overlap_fix/
-    ├── application_train.csv
-    ├── previous_application.csv
-    ├── dim_name_contract_type.csv
-    ├── dim_weekday_appr_process_start.csv
-    ├── dim_name_type_suite.csv
-    └── overlap_fix.zip
+├── common_dims/
+│   ├── dim_name_contract_type.csv
+│   ├── dim_weekday_appr_process_start.csv
+│   └── dim_name_type_suite.csv
+└── ...
 ```
 
 ## Ejecución
 
-### Script Principal
+Ejecutar como script:
 
 ```bash
-cd src/
-python __main__.py
+python 01_data_normalization/src/__main__.py
 ```
 
 O ejecutar como módulo:
@@ -96,42 +93,11 @@ O ejecutar como módulo:
 ```bash
 python -m 01_data_normalization
 ```
-
-## Transformaciones Aplicadas
-
-### Primera Forma Normal (1NF)
-- Atomización de `ORGANIZATION_TYPE`: Extrae el número de tipo en columna separada `ORGANIZATION_TYPE_2`
-
-### Dimensiones Estándar
-Cada atributo categórico se descompone en:
-- **Tabla Principal**: Contiene solo IDs (referencias a dimensiones)
-- **Tabla de Dimensión**: Mapeo de ID → Valor original
-
-### Mappeo de Weekdays Estandarizado
-
-| ID | Día |
-|---|---|
-| 1 | MONDAY |
-| 2 | TUESDAY |
-| 3 | WEDNESDAY |
-| 4 | THURSDAY |
-| 5 | FRIDAY |
-| 6 | SATURDAY |
-| 7 | SUNDAY |
-
-## Requisitos
-
-- Python 3.7+
-- pandas
-- numpy
-
 ## Notas Importantes
 
 1. El script espera los CSV de entrada en `../data/raw/`
 2. Los archivos de salida se guardan en `../data/db_input/`
-3. Los directorios temporales se limpian automáticamente al final
-4. El archivo `overlap_fix.zip` contiene una versión comprimida de los datos corregidos
-5. Los IDs se convierten a `Int64` para manejar correctamente valores nulos
+3. Los directorios temporales se limpian automáticamente al final.
 
 ## Tests
 
@@ -139,7 +105,7 @@ Cada atributo categórico se descompone en:
 
 Script principal que verifica que los datasets normalizados mantienen la integridad de los datos comparándolos con los originales.
 
-**Datasets testeados:**
+**Datasets revisados:**
 - `application_train`
 - `bureau`
 - `previous_application`
@@ -151,26 +117,29 @@ Script principal que verifica que los datasets normalizados mantienen la integri
 
 ### Ejecución de Tests
 
-Desde la carpeta del proyecto:
+Ejecutar directamente:
+
 ```bash
-python -m pytest tests/test_content.py
+python 01_data_normalization/tests/test_content.py
 ```
 
-O ejecutar directamente:
+O bien como módulo:
+
 ```bash
-cd tests/
-python test_content.py
+python -m 01_data_normalization.tests.test_content
 ```
 
-### Requisitos de Tests
+### Notas sobre las Validaciones
+
+- Las columnas `ORGANIZATION_TYPE` y `ORGANIZATION_TYPE_2` se excluyen de la comparación ya que se transforman durante la normalización.
+- Se tolera una diferencia máxima de `1e-5` en valores numéricos para permitir errores de redondeo.
+- El script genera un resumen detallado de diferencias encontradas para facilitar el debugging.
+
+## Requisitos
 
 - pandas
 - numpy
 - pandasql
 - pytest (opcional)
 
-### Notas sobre las Validaciones
 
-- Las columnas `ORGANIZATION_TYPE` y `ORGANIZATION_TYPE_2` se excluyen de la comparación ya que se transforman durante la normalización
-- Se tolera una diferencia máxima de `1e-5` en valores numéricos para permitir errores de redondeo
-- El script genera un resumen detallado de diferencias encontradas para facilitar el debugging
