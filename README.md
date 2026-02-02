@@ -6,7 +6,7 @@ Data Architectures for Risk Management and Audit
 
 ### 01_data_normalization
 
-**Descripción:** Script de normalización de bases de datos que aplica principios de diseño relacional (1NF, 2NF, 3NF) a múltiples datasets, incluyendo atomización de valores, creación de tablas de dimensiones y resolución de solapamientos de dimensiones compartidas.
+Script de normalización de bases de datos que aplica principios de diseño relacional (1NF, 2NF, 3NF) a múltiples datasets, incluyendo atomización de valores, creación de tablas de dimensiones y resolución de solapamientos de dimensiones compartidas.
 
 **Script principal:** [`src/__main__.py`](01_data_normalization/src/__main__.py)
 
@@ -14,7 +14,6 @@ Data Architectures for Risk Management and Audit
   - Atomización de datos (Primera Forma Normal - 1NF)
   - Descomposición de tablas en dimensiones y tablas de referencia
   - Resolución de overlaps en dimensiones compartidas entre `application_train` y `previous_application`
-  - Procesamiento en 4 fases: normalización estándar, normalización con overlap, correcciones de overlap y limpieza
   - Exportación de datasets normalizados y tablas de dimensiones en CSV
 
 - **Tests:**
@@ -24,7 +23,7 @@ Data Architectures for Risk Management and Audit
 
 ### 02_database_connections
 
-**Descripción:** Herramienta para automatizar la carga de datos desde archivos CSV a una base de datos MySQL, con funcionalidades de creación automática de esquemas, validación de integridad de datos y control de sincronización.
+Herramienta para automatizar la carga de datos desde archivos CSV a una base de datos MySQL, con funcionalidades de creación automática de esquemas, validación de integridad de datos y control de sincronización.
 
 **Script principal:** [`src/__main__.py`](02_database_connections/src/__main__.py)
 
@@ -33,7 +32,6 @@ Data Architectures for Risk Management and Audit
   - Creación automática de base de datos si no existe
   - Detección dinámica de archivos CSV
   - Inferencia automática de tipos de datos
-  - Carga masiva optimizada de datos usando `LOAD DATA LOCAL INFILE`
 
 - **Tests:**
   - `test_db_connection.py`: Verifica la conectividad a la base de datos usando tanto `mysql-connector-python` como `SQLAlchemy`
