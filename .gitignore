@@ -77,11 +77,12 @@ db.sqlite3-journal
 # ==========================================
 # 6. DATOS Y ARCHIVOS DE USUARIO
 # ==========================================
-*.csv
 *.zip
 *_bak*
-/docs/*.md
+/data
+/docs
 !README.md
+opencode.json
 
 # ==========================================
 # 7. FRAMEWORKS Y HERRAMIENTAS ESPECÍFICAS

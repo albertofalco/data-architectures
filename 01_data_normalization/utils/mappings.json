@@ -1,0 +1,48 @@
+[
+  {
+    "name_contract_type": {
+      "Cash loans": 1,
+      "Consumer loans": 2,
+      "Revolving loans": 3,
+      "XNA": 4
+    }
+  },
+  {
+    "name_type_suite": {
+      "Children": 1,
+      "Family": 2,
+      "Group of people": 3,
+      "Other_A": 4,
+      "Other_B": 5,
+      "Spouse, partner": 6,
+      "Unaccompanied": 7
+    }
+  },
+  {
+    "weekday_appr_process_start": {
+      "MONDAY": 1,
+      "TUESDAY": 2,
+      "WEDNESDAY": 3,
+      "THURSDAY": 4,
+      "FRIDAY": 5,
+      "SATURDAY": 6,
+      "SUNDAY": 7
+    }
+  },
+  {
+    "name_contract_status": {
+      "Active": 1,
+      "Amortized debt": 2,
+      "Approved": 3,
+      "Canceled": 4,
+      "Completed": 5,
+      "Demand": 6,
+      "Refused": 7,
+      "Returned to the store": 8,
+      "Sent proposal": 9,
+      "Signed": 10,
+      "Unused offer": 11,
+      "XNA": 12
+    }
+  }
+]

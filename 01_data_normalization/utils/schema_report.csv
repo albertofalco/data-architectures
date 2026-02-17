@@ -1,0 +1,38 @@
+Archivo,Columna,Tipo,Value Counts,Tablas en las que se encuentra (*)
+installments_payments.csv,SK_ID_PREV,int64,"[1054186, 1330831, 2085231, 2452527, 2714724, 1137312, 2234264, 1818599, 2723183, 1413990]","['credit_card_balance.csv', 'previous_application.csv', 'POS_CASH_balance.csv']"
+installments_payments.csv,SK_ID_CURR,int64,"[161674, 151639, 193053, 199697, 167756, 164489, 184693, 111420, 112102, 109741]","['application_train.csv', 'credit_card_balance.csv', 'previous_application.csv', 'POS_CASH_balance.csv', 'bureau.csv']"
+bureau_balance.csv,SK_ID_BUREAU,int64,"[5715448, 5715449, 5715451, 5715452, 5715453, 5715454, 5715455, 5715456, 5715457, 5715458]",['bureau.csv']
+bureau_balance.csv,MONTHS_BALANCE,int64,"[0, -1, -2, -3, -4, -5, -6, -7, -8, -9]","['credit_card_balance.csv', 'POS_CASH_balance.csv']"
+application_train.csv,SK_ID_CURR,int64,"[100002, 100003, 100004, 100006, 100007, 100008, 100009, 100010, 100011, 100012]","['installments_payments.csv', 'credit_card_balance.csv', 'previous_application.csv', 'POS_CASH_balance.csv', 'bureau.csv']"
+application_train.csv,NAME_CONTRACT_TYPE,object,"['Cash loans', 'Revolving loans']",['previous_application.csv']
+application_train.csv,AMT_CREDIT,float64,"[406597.5, 1293502.5, 135000.0, 312682.5, 513000.0, 490495.5, 1560726.0, 1530000.0, 1019610.0, 405000.0]",['previous_application.csv']
+application_train.csv,AMT_ANNUITY,float64,"[24700.5, 35698.5, 6750.0, 29686.5, 21865.5, 27517.5, 41301.0, 42075.0, 33826.5, 20250.0]","['previous_application.csv', 'bureau.csv']"
+application_train.csv,AMT_GOODS_PRICE,float64,"[351000.0, 1129500.0, 135000.0, 297000.0, 513000.0, 454500.0, 1395000.0, 1530000.0, 913500.0, 405000.0]",['previous_application.csv']
+application_train.csv,NAME_TYPE_SUITE,object,"['Unaccompanied', 'Family', 'Spouse, partner', 'Children', 'Other_A', 'Other_B', 'Group of people']",['previous_application.csv']
+application_train.csv,WEEKDAY_APPR_PROCESS_START,object,"['WEDNESDAY', 'MONDAY', 'THURSDAY', 'SUNDAY', 'SATURDAY', 'FRIDAY', 'TUESDAY']",['previous_application.csv']
+application_train.csv,HOUR_APPR_PROCESS_START,int64,"[10, 11, 9, 17, 16, 14, 8, 15, 7, 13]",['previous_application.csv']
+credit_card_balance.csv,SK_ID_PREV,int64,"[2562384, 2582071, 1740877, 1389973, 1891521, 2646502, 1079071, 2095912, 2181852, 1235299]","['installments_payments.csv', 'previous_application.csv', 'POS_CASH_balance.csv']"
+credit_card_balance.csv,SK_ID_CURR,int64,"[378907, 363914, 371185, 337855, 126868, 380010, 171320, 118650, 367360, 203885]","['installments_payments.csv', 'application_train.csv', 'previous_application.csv', 'POS_CASH_balance.csv', 'bureau.csv']"
+credit_card_balance.csv,MONTHS_BALANCE,int64,"[-6, -1, -7, -4, -5, -3, -2, -19, -13, -18]","['bureau_balance.csv', 'POS_CASH_balance.csv']"
+credit_card_balance.csv,NAME_CONTRACT_STATUS,object,"['Active', 'Completed', 'Demand', 'Signed', 'Sent proposal', 'Refused', 'Approved']","['previous_application.csv', 'POS_CASH_balance.csv']"
+credit_card_balance.csv,SK_DPD,int64,"[0, 7, 2192, 717, 28, 18, 1676, 1706, 1311, 1158]",['POS_CASH_balance.csv']
+credit_card_balance.csv,SK_DPD_DEF,int64,"[0, 7, 99, 1, 701, 8, 5, 63, 31, 1158]",['POS_CASH_balance.csv']
+previous_application.csv,SK_ID_PREV,int64,"[2030495, 2802425, 2523466, 2819243, 1784265, 1383531, 2315218, 1656711, 2367563, 2579447]","['installments_payments.csv', 'credit_card_balance.csv', 'POS_CASH_balance.csv']"
+previous_application.csv,SK_ID_CURR,int64,"[271877, 108129, 122040, 176158, 202054, 199383, 175704, 296299, 342292, 334349]","['installments_payments.csv', 'application_train.csv', 'credit_card_balance.csv', 'POS_CASH_balance.csv', 'bureau.csv']"
+previous_application.csv,NAME_CONTRACT_TYPE,object,"['Consumer loans', 'Cash loans', 'Revolving loans', 'XNA']",['application_train.csv']
+previous_application.csv,AMT_ANNUITY,float64,"[1730.43, 25188.615, 15060.735, 47041.335, 31924.395, 23703.93, 11368.62, 13832.775, 12165.21, 7654.86]","['application_train.csv', 'bureau.csv']"
+previous_application.csv,AMT_CREDIT,float64,"[17145.0, 679671.0, 136444.5, 470790.0, 404055.0, 340573.5, 0.0, 335754.0, 246397.5, 174361.5]",['application_train.csv']
+previous_application.csv,AMT_GOODS_PRICE,float64,"[17145.0, 607500.0, 112500.0, 450000.0, 337500.0, 315000.0, 270000.0, 211500.0, 148500.0, 53779.5]",['application_train.csv']
+previous_application.csv,WEEKDAY_APPR_PROCESS_START,object,"['SATURDAY', 'THURSDAY', 'TUESDAY', 'MONDAY', 'FRIDAY', 'SUNDAY', 'WEDNESDAY']",['application_train.csv']
+previous_application.csv,HOUR_APPR_PROCESS_START,int64,"[15, 11, 7, 9, 8, 10, 12, 13, 14, 16]",['application_train.csv']
+previous_application.csv,NAME_CONTRACT_STATUS,object,"['Approved', 'Refused', 'Canceled', 'Unused offer']","['credit_card_balance.csv', 'POS_CASH_balance.csv']"
+previous_application.csv,NAME_TYPE_SUITE,object,"['Unaccompanied', 'Spouse, partner', 'Family', 'Children', 'Other_B', 'Other_A', 'Group of people']",['application_train.csv']
+POS_CASH_balance.csv,SK_ID_PREV,int64,"[1803195, 1715348, 1784872, 1903291, 2341044, 2207092, 1110516, 1387235, 1220500, 2371489]","['installments_payments.csv', 'credit_card_balance.csv', 'previous_application.csv']"
+POS_CASH_balance.csv,SK_ID_CURR,int64,"[182943, 367990, 397406, 269225, 334279, 342166, 204376, 153211, 112740, 274851]","['installments_payments.csv', 'application_train.csv', 'credit_card_balance.csv', 'previous_application.csv', 'bureau.csv']"
+POS_CASH_balance.csv,MONTHS_BALANCE,int64,"[-31, -33, -32, -35, -38, -39, -34, -41, -37, -40]","['bureau_balance.csv', 'credit_card_balance.csv']"
+POS_CASH_balance.csv,NAME_CONTRACT_STATUS,object,"['Active', 'Completed', 'Signed', 'Approved', 'Returned to the store', 'Demand', 'Canceled', 'XNA', 'Amortized debt']","['credit_card_balance.csv', 'previous_application.csv']"
+POS_CASH_balance.csv,SK_DPD,int64,"[0, 1, 2, 4, 3, 18, 7, 5, 12, 6]",['credit_card_balance.csv']
+POS_CASH_balance.csv,SK_DPD_DEF,int64,"[0, 1, 2, 4, 3, 18, 7, 5, 12, 8]",['credit_card_balance.csv']
+bureau.csv,SK_ID_CURR,int64,"[215354, 162297, 402440, 238881, 222183, 426155, 136226, 400486, 435112, 452585]","['installments_payments.csv', 'application_train.csv', 'credit_card_balance.csv', 'previous_application.csv', 'POS_CASH_balance.csv']"
+bureau.csv,SK_ID_BUREAU,int64,"[5714462, 5714463, 5714464, 5714465, 5714466, 5714467, 5714468, 5714469, 5714470, 5714471]",['bureau_balance.csv']
+bureau.csv,AMT_ANNUITY,float64,"[0.0, 2691.0, 24462.0, 8181.0, 8061.21, 13131.0, 40522.005, 26550.0, 67995.0, 43668.0]","['application_train.csv', 'previous_application.csv']"

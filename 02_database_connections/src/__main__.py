@@ -5,10 +5,11 @@
 # Importacion de librerias.
 import argparse
 import os
+import sys
 import pandas as pd
 from pathlib import Path
 from dotenv import load_dotenv
-from sqlalchemy import create_engine, text
+from sqlalchemy import BigInteger, Integer, create_engine, text
 from sqlalchemy.exc import SQLAlchemyError
 
 #######################################################
@@ -65,8 +66,16 @@ def main():
 
         try:
             # Leer CSV con Pandas
-            df = pd.read_csv(archivo)
-
+            df = pd.read_csv(archivo, dtype_backend="numpy_nullable")
+            
+            # Definir diccionarios de tipos manuales si es necesario
+            # Pero una forma automática de "arreglar" los Int64 para SQLAlchemy es:
+            dtype_mapping = {}
+            for col_name, col_type in df.dtypes.items():
+                if str(col_type) == 'Int64' or str(col_type) == 'int64':
+                    dtype_mapping[col_name] = Integer() # O BigInteger() si son muy grandes
+            print(f"Tipos detectados para '{archivo.name}': {dtype_mapping}")
+            
             # 5. Cargar en MySQL usando Pandas + SQLAlchemy
             # 'if_exists="replace"' elimina la tabla y la crea de nuevo con los tipos correctos.
             # 'index=False' evita que Pandas cree una columna para el índice del DataFrame.
@@ -76,13 +85,15 @@ def main():
                 con=engine, 
                 if_exists='replace', 
                 index=False,
-                chunksize=1000
+                chunksize=1000,
+                dtype=dtype_mapping
             )
             
             print(f"Tabla '{nombre_tabla}' cargada exitosamente ({len(df)} filas).")
 
         except Exception as e:
             print(f"Error procesando {archivo.name}: {e}")
+
     
     print("\nProceso completado.")
 

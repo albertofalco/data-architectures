@@ -1,0 +1,339 @@
+[
+    {
+        "table_name": "POS_CASH_balance",
+        "pk": [
+            "SK_ID_PREV",
+            "SK_ID_CURR"
+        ],
+        "fk": [
+            "NAME_CONTRACT_STATUS_ID"
+        ]
+    },
+    {
+        "table_name": "installments_payments",
+        "pk": [
+            "SK_ID_PREV",
+            "SK_ID_CURR"
+        ],
+        "fk": []
+    },
+    {
+        "table_name": "credit_card_balance",
+        "pk": [
+            "SK_ID_PREV",
+            "SK_ID_CURR"
+        ],
+        "fk": [
+            "NAME_CONTRACT_STATUS_ID"
+        ]
+    },
+    {
+        "table_name": "dim_credit_active",
+        "pk": [
+            "CREDIT_ACTIVE_ID"
+        ],
+        "fk": []
+    },
+    {
+        "table_name": "dim_credit_currency",
+        "pk": [
+            "CREDIT_CURRENCY_ID"
+        ],
+        "fk": []
+    },
+    {
+        "table_name": "bureau",
+        "pk": [
+            "SK_ID_CURR",
+            "SK_ID_BUREAU"
+        ],
+        "fk": [
+            "CREDIT_ACTIVE_ID",
+            "CREDIT_CURRENCY_ID",
+            "CREDIT_TYPE_ID"
+        ]
+    },
+    {
+        "table_name": "dim_credit_type",
+        "pk": [
+            "CREDIT_TYPE_ID"
+        ],
+        "fk": []
+    },
+    {
+        "table_name": "dim_name_client_type",
+        "pk": [
+            "NAME_CLIENT_TYPE_ID"
+        ],
+        "fk": []
+    },
+    {
+        "table_name": "dim_name_product_type",
+        "pk": [
+            "NAME_PRODUCT_TYPE_ID"
+        ],
+        "fk": []
+    },
+    {
+        "table_name": "dim_code_reject_reason",
+        "pk": [
+            "CODE_REJECT_REASON_ID"
+        ],
+        "fk": []
+    },
+    {
+        "table_name": "dim_name_seller_industry",
+        "pk": [
+            "NAME_SELLER_INDUSTRY_ID"
+        ],
+        "fk": []
+    },
+    {
+        "table_name": "previous_application",
+        "pk": [
+            "SK_ID_PREV",
+            "SK_ID_CURR"
+        ],
+        "fk": [
+            "NAME_CONTRACT_TYPE_ID",
+            "WEEKDAY_APPR_PROCESS_START_ID",
+            "FLAG_LAST_APPL_PER_CONTRACT_ID",
+            "NAME_CASH_LOAN_PURPOSE_ID",
+            "NAME_CONTRACT_STATUS_ID",
+            "NAME_PAYMENT_TYPE_ID",
+            "CODE_REJECT_REASON_ID",
+            "NAME_TYPE_SUITE_ID",
+            "NAME_CLIENT_TYPE_ID",
+            "NAME_GOODS_CATEGORY_ID",
+            "NAME_PORTFOLIO_ID",
+            "NAME_PRODUCT_TYPE_ID",
+            "CHANNEL_TYPE_ID",
+            "NAME_SELLER_INDUSTRY_ID",
+            "NAME_YIELD_GROUP_ID",
+            "PRODUCT_COMBINATION_ID"
+        ]
+    },
+    {
+        "table_name": "dim_flag_last_appl_per_contract",
+        "pk": [
+            "FLAG_LAST_APPL_PER_CONTRACT_ID"
+        ],
+        "fk": []
+    },
+    {
+        "table_name": "dim_name_goods_category",
+        "pk": [
+            "NAME_GOODS_CATEGORY_ID"
+        ],
+        "fk": []
+    },
+    {
+        "table_name": "dim_name_payment_type",
+        "pk": [
+            "NAME_PAYMENT_TYPE_ID"
+        ],
+        "fk": []
+    },
+    {
+        "table_name": "dim_product_combination",
+        "pk": [
+            "PRODUCT_COMBINATION_ID"
+        ],
+        "fk": []
+    },
+    {
+        "table_name": "dim_name_portfolio",
+        "pk": [
+            "NAME_PORTFOLIO_ID"
+        ],
+        "fk": []
+    },
+    {
+        "table_name": "dim_name_yield_group",
+        "pk": [
+            "NAME_YIELD_GROUP_ID"
+        ],
+        "fk": []
+    },
+    {
+        "table_name": "dim_name_cash_loan_purpose",
+        "pk": [
+            "NAME_CASH_LOAN_PURPOSE_ID"
+        ],
+        "fk": []
+    },
+    {
+        "table_name": "dim_channel_type",
+        "pk": [
+            "CHANNEL_TYPE_ID"
+        ],
+        "fk": []
+    },
+    {
+        "table_name": "dim_flag_own_car",
+        "pk": [
+            "FLAG_OWN_CAR_ID"
+        ],
+        "fk": []
+    },
+    {
+        "table_name": "dim_flag_own_realty",
+        "pk": [
+            "FLAG_OWN_REALTY_ID"
+        ],
+        "fk": []
+    },
+    {
+        "table_name": "dim_wallsmaterial_mode",
+        "pk": [
+            "WALLSMATERIAL_MODE_ID"
+        ],
+        "fk": []
+    },
+    {
+        "table_name": "dim_code_gender",
+        "pk": [
+            "CODE_GENDER_ID"
+        ],
+        "fk": []
+    },
+    {
+        "table_name": "dim_fondkapremont_mode",
+        "pk": [
+            "FONDKAPREMONT_MODE_ID"
+        ],
+        "fk": []
+    },
+    {
+        "table_name": "application_train",
+        "pk": [
+            "SK_ID_CURR"
+        ],
+        "fk": [
+            "NAME_CONTRACT_TYPE_ID",
+            "CODE_GENDER_ID",
+            "FLAG_OWN_CAR_ID",
+            "FLAG_OWN_REALTY_ID",
+            "NAME_TYPE_SUITE_ID",
+            "NAME_INCOME_TYPE_ID",
+            "NAME_EDUCATION_TYPE_ID",
+            "NAME_FAMILY_STATUS_ID",
+            "NAME_HOUSING_TYPE_ID",
+            "OCCUPATION_TYPE_ID",
+            "WEEKDAY_APPR_PROCESS_START_ID",
+            "ORGANIZATION_TYPE_ID",
+            "FONDKAPREMONT_MODE_ID",
+            "HOUSETYPE_MODE_ID",
+            "WALLSMATERIAL_MODE_ID",
+            "EMERGENCYSTATE_MODE_ID",
+            "ORGANIZATION_TYPE_2_ID"
+        ]
+    },
+    {
+        "table_name": "dim_organization_type_2",
+        "pk": [
+            "ORGANIZATION_TYPE_2_ID"
+        ],
+        "fk": []
+    },
+    {
+        "table_name": "dim_emergencystate_mode",
+        "pk": [
+            "EMERGENCYSTATE_MODE_ID"
+        ],
+        "fk": []
+    },
+    {
+        "table_name": "dim_name_family_status",
+        "pk": [
+            "NAME_FAMILY_STATUS_ID"
+        ],
+        "fk": []
+    },
+    {
+        "table_name": "dim_housetype_mode",
+        "pk": [
+            "HOUSETYPE_MODE_ID"
+        ],
+        "fk": []
+    },
+    {
+        "table_name": "dim_organization_type",
+        "pk": [
+            "ORGANIZATION_TYPE_ID"
+        ],
+        "fk": []
+    },
+    {
+        "table_name": "dim_name_income_type",
+        "pk": [
+            "NAME_INCOME_TYPE_ID"
+        ],
+        "fk": []
+    },
+    {
+        "table_name": "dim_name_housing_type",
+        "pk": [
+            "NAME_HOUSING_TYPE_ID"
+        ],
+        "fk": []
+    },
+    {
+        "table_name": "dim_occupation_type",
+        "pk": [
+            "OCCUPATION_TYPE_ID"
+        ],
+        "fk": []
+    },
+    {
+        "table_name": "dim_name_education_type",
+        "pk": [
+            "NAME_EDUCATION_TYPE_ID"
+        ],
+        "fk": []
+    },
+    {
+        "table_name": "bureau_balance",
+        "pk": [
+            "SK_ID_BUREAU"
+        ],
+        "fk": [
+            "STATUS_ID"
+        ]
+    },
+    {
+        "table_name": "dim_status",
+        "pk": [
+            "STATUS_ID"
+        ],
+        "fk": []
+    },
+    {
+        "table_name": "dim_name_contract_type",
+        "pk": [
+            "NAME_CONTRACT_TYPE_ID"
+        ],
+        "fk": []
+    },
+    {
+        "table_name": "dim_weekday_appr_process_start",
+        "pk": [
+            "WEEKDAY_APPR_PROCESS_START_ID"
+        ],
+        "fk": []
+    },
+    {
+        "table_name": "dim_name_type_suite",
+        "pk": [
+            "NAME_TYPE_SUITE_ID"
+        ],
+        "fk": []
+    },
+    {
+        "table_name": "dim_name_contract_status",
+        "pk": [
+            "NAME_CONTRACT_STATUS_ID"
+        ],
+        "fk": []
+    }
+]

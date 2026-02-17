@@ -1,3 +1,17 @@
+"""
+Script para descarga y configuración de assets desde Google Drive.
+
+Este módulo proporciona funcionalidades para descargar archivos o carpetas
+desde Google Drive, extraerlos si son archivos ZIP, y gestionar automáticamente
+la protección de estos archivos en .gitignore para evitar subirlos al repositorio.
+
+Uso:
+    python setup_assets.py <file_id> <dest_path>
+
+Ejemplo:
+    python setup_assets.py 1BcxEuEUQyF5x34gwbMGeY9W1qW3h8hQw /ruta/destino
+"""
+
 import gdown
 import zipfile
 import argparse
@@ -5,11 +19,30 @@ import os
 from pathlib import Path
 
 def is_folder_populated(path):
-    """Verifica si la carpeta existe y contiene archivos."""
+    """
+    Verifica si la carpeta existe y contiene archivos.
+    
+    Args:
+        path: Objeto Path que representa la ruta a verificar.
+    
+    Returns:
+        bool: True si la carpeta existe y contiene al menos un archivo o subcarpeta,
+              False en caso contrario.
+    """
     return path.exists() and any(path.iterdir())
 
 def update_gitignore(path_to_ignore):
-    """Asegura que la ruta de descarga esté en el .gitignore de la raíz."""
+    """
+    Añade la ruta de descarga al .gitignore de la raíz del proyecto.
+    
+    Busca el archivo .gitignore en el directorio raíz del repositorio y añade
+    la ruta especificada si no está ya presente. Esto evita que los archivos
+    descargados se suban accidentalmente al control de versiones.
+    
+    Args:
+        path_to_ignore: Ruta relativa o absoluta que se desea proteger.
+                       Se normalizará para ser relativa a la raíz del repo.
+    """
     # Buscamos el .gitignore subiendo un nivel desde 'utils/'
     gitignore_path = Path(__file__).parent.parent / ".gitignore"
     
@@ -31,6 +64,23 @@ def update_gitignore(path_to_ignore):
         print(f"La ruta '{clean_path}' ya está protegida en .gitignore.")
 
 def download_and_setup(file_id, dest_path):
+    """
+    Descarga un archivo desde Google Drive y lo configura en la ruta destino.
+    
+    Este proceso incluye:
+    1. Añadir la ruta destino al .gitignore para protección
+    2. Verificar si los archivos ya existen para evitar descargas duplicadas
+    3. Descargar el archivo desde Google Drive usando gdown
+    4. Extraer el contenido si es un archivo ZIP
+    5. Limpiar archivos temporales de descarga
+    
+    Args:
+        file_id: ID del archivo en Google Drive (extracted from the share URL).
+        dest_path: Ruta destino donde se guardarán los archivos descargados.
+    
+    Returns:
+        None. La función imprime mensajes de estado durante el proceso.
+    """
     destination = Path(dest_path)
     
     # 1. Asegurar protección en Git

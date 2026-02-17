@@ -52,7 +52,10 @@ def verify_by_hashing(csv_path, table_name, connection, chunk_size=1000000):
             data = chunk.to_csv(index=False, header=False).encode('utf-8')
             sha256.update(data)
             i += 1
-            print(f"  Procesado hash csv: {i * chunk_size + len(chunk)} registros...", end="\r")
+            if len(chunk) < chunk_size:
+                print(f"  Procesado hash csv: {len(chunk)} registros...", end="\r")
+            else:
+                print(f"  Procesado hash csv: {i * chunk_size} registros...", end="\r")
         return sha256.hexdigest()
 
     def get_hash_db():
@@ -69,7 +72,10 @@ def verify_by_hashing(csv_path, table_name, connection, chunk_size=1000000):
             sha256.update(data)
             offset += chunk_size
             i += 1
-            print(f"  Procesado hash db:  {i * chunk_size + len(chunk_db)} registros...", end="\r")
+            if len(chunk_db) < chunk_size:
+                print(f"  Procesado hash db: {len(chunk_db)} registros...", end="\r")
+            else:
+                print(f"  Procesado hash db:  {i * chunk_size} registros...", end="\r")
         return sha256.hexdigest()
 
     hash_csv = get_hash_csv()
@@ -123,8 +129,8 @@ def control_table_names(connection, dir_path):
     dict_archivos = {archivo.stem.lower(): archivo for archivo in archivos}
     csv_names = set(dict_archivos.keys())
 
-    common_tables = csv_names.intersection(db_names)
-    return common_tables, dict_archivos
+    common_names = csv_names.intersection(db_names)
+    return common_names, dict_archivos
 
 # ============================================================================
 # MAIN
@@ -134,19 +140,28 @@ def main():
     try:
         engine = create_engine(f"mysql+mysqlconnector://{os.getenv('DB_USER')}:{os.getenv('DB_PASSWORD')}@{os.getenv('DB_HOST')}/{os.getenv('DB_NAME')}")
         connection = engine.connect()
+        print(f"Conectado a la base de datos: '{os.getenv('DB_NAME')}'", end="\n")
 
-        common_tables, dict_archivos = control_table_names(connection, DATA_PATH)
-
-        for table in common_tables:
+        tables, dict_archivos = control_table_names(connection, DATA_PATH)
+        
+        print(f"Tablas comunes encontradas: {tables}", end="\n\n")
+        
+        i = 0
+        for table in sorted(tables):
             # Filtro para tu tabla pesada específica
-            # if table == 'installments_payments':
+            # if 'dim' in table...
             csv_file = dict_archivos[table]
             
             # Opción 1: Hasheo (Muy rápido para descartar errores)
+            print(f"\nProcesando tabla {table} ({i+1}/{len(tables)})...")
             verify_by_hashing(csv_file, table, connection)
+            i += 1
             
             # Opción 2: Assert por Chunks (Lento pero detallado)
+            # print(f"Procesando tabla {table} ({i+1}/{len(tables)})...")
+            # print(f"\nVerificando integridad de {table} usando chunks...")
             # verify_by_chunks(csv_file, table, connection)
+            # i += 1
 
     except Exception as e:
         print(f"Error: {e}")

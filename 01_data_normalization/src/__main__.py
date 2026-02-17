@@ -3,21 +3,32 @@ Script de normalización de base de datos.
 
 Este script realiza operaciones de normalización de datos en múltiples datasets,
 aplicando transformaciones como:
+- Remapeo de valores usando mappings.json (dimensiones comunes)
 - Atomización de valores (Primera Forma Normal)
-- Creación de tablas de dimensiones (mejoras de diseño)
+- Creación de tablas de dimensiones para atributos categóricos
 - Exportación de datos normalizados a CSV
-- Resolución de solapamientos de dimensiones entre application_train y previous_application
 """
 
 import pandas as pd
 import numpy as np
 import re
 import os
+import json
 from pathlib import Path
 
 # ============================================================================
 # FUNCIONES AUXILIARES
 # ============================================================================
+
+def convert_to_nullable_int(df):
+    """Convierte columnas float64 a Int64 nullable donde es posible."""
+    for col in df.columns:
+        if df[col].dtype == 'float64':
+            non_null = df[col].dropna()
+            if len(non_null) > 0 and all(non_null == non_null.astype(int)):
+                df[col] = df[col].astype('Int64')
+    return df
+
 
 def get_organization_type_2(org_type):
     """Extrae el número de tipo de organización."""
@@ -47,94 +58,163 @@ def clean_organization_type(org_type):
     return cleaned_org_type if cleaned_org_type else org_type_str
 
 
-def normalize_dataset(csv_name, data_path, output_dir, skip_dimension_export=False):
+def load_mappings(mappings_path):
     """
-    Normaliza un dataset específico.
+    Carga el archivo mappings.json y lo convierte en un diccionario.
     
-    Realiza las siguientes operaciones:
-    1. Lee el CSV
-    2. Aplica transformaciones de 1NF (si aplica)
-    3. Crea tablas de dimensiones para atributos categóricos
-    4. Guarda el dataset normalizado y las dimensiones (si aplica)
+    Parameters:
+    -----------
+    mappings_path : Path
+        Ruta al archivo mappings.json
+    
+    Returns:
+    --------
+    dict : Diccionario con nombre de columna -> {valor: id}
+    """
+    with open(mappings_path, 'r') as f:
+        mappings_list = json.load(f)
+    
+    mappings_dict = {}
+    for item in mappings_list:
+        for key, value in item.items():
+            mappings_dict[key] = value
+    
+    return mappings_dict
+
+
+def remap_with_mappings(csv_name, data_path, output_dir, mappings_dict):
+    """
+    Remapea valores usando mappings.json y crea tablas de dimensiones comunes.
     
     Parameters:
     -----------
     csv_name : str
         Nombre del archivo CSV a procesar
-    data_path : str
+    data_path : Path
         Ruta a los datos de entrada
-    output_dir : str
+    output_dir : Path
         Ruta base para guardar los datos de salida
-    skip_dimension_export : bool
-        Si True, no exporta las dimensiones (usadas para application_train y previous_application
-        que requieren correcciones de overlap)
+    mappings_dict : dict
+        Diccionario de mapeos cargado desde mappings.json
     
     Returns:
     --------
-    tuple : (df normalizado, diccionario de dimensiones)
+    tuple : (df procesado, lista de columnas procesadas)
     """
-    
     print(f"\n{'='*70}")
-    print(f"Procesando: {csv_name}")
+    print(f"Remapeando: {csv_name}")
     print(f"{'='*70}")
     
-    # ========================================================================
-    # 1. LECTURA DEL DATASET
-    # ========================================================================
     df = pd.read_csv(data_path / csv_name)
     print(f"Dataset cargado: {df.shape[0]} filas, {df.shape[1]} columnas")
     
-    # ========================================================================
-    # 2. PRIMERA FORMA NORMAL - Atomización de ORGANIZATION_TYPE
-    # ========================================================================
+    # 1NF - Atomización de ORGANIZATION_TYPE
     if 'ORGANIZATION_TYPE' in df.columns:
         print("\nAplicando Primera Forma Normal (1NF) - Atomización de ORGANIZATION_TYPE")
         df['ORGANIZATION_TYPE_2'] = df['ORGANIZATION_TYPE'].apply(get_organization_type_2)
         df['ORGANIZATION_TYPE'] = df['ORGANIZATION_TYPE'].apply(clean_organization_type)
     
-    # ========================================================================
-    # 3. MEJORAS DE DISEÑO - Creación de Tablas de Dimensiones
-    # ========================================================================
+    # Identificar columnas que están en mappings.json
+    processed_columns = []
+    
+    for col_name, mapping in mappings_dict.items():
+        col_name_upper = col_name.upper()
+        if col_name_upper in df.columns:
+            print(f"\nRemapeando columna: {col_name_upper}")
+            
+            unique_values = df[col_name_upper].dropna().unique()
+            print(f"  - {col_name_upper}: {len(unique_values)} valores únicos en dataset")
+            
+            df[col_name_upper] = df[col_name_upper].map(mapping)
+            df.rename(columns={col_name_upper: f'{col_name_upper}_ID'}, inplace=True)
+            
+            processed_columns.append(col_name_upper)
+    
+    # Guardar dataset principal
+    ref_name = csv_name.replace('.csv', '')
+    extract_dir = output_dir / ref_name
+    
+    if not os.path.exists(extract_dir):
+        os.makedirs(extract_dir)
+    
+    df = convert_to_nullable_int(df)
+    df.to_csv(extract_dir / csv_name, index=False)
+    print(f"\n✓ Dataset principal guardado: {extract_dir / csv_name}")
+    
+    return df, processed_columns
+
+
+def normalize_dataset_standard(csv_name, data_path, output_dir, exclude_columns=None):
+    """
+    Normaliza un dataset para columnas categóricas NO incluidas en mappings.json.
+    
+    Parameters:
+    -----------
+    csv_name : str
+        Nombre del archivo CSV a procesar
+    data_path : Path
+        Ruta a los datos de entrada
+    output_dir : Path
+        Ruta base para guardar los datos de salida
+    exclude_columns : list
+        Lista de columnas a excluir (ya procesadas con mappings.json)
+    
+    Returns:
+    --------
+    tuple : (df normalizado, diccionario de dimensiones)
+    """
+    if exclude_columns is None:
+        exclude_columns = []
+    
+    print(f"\n{'='*70}")
+    print(f"Normalizando: {csv_name}")
+    print(f"{'='*70}")
+    
+    df = pd.read_csv(data_path / csv_name)
+    print(f"Dataset cargado: {df.shape[0]} filas, {df.shape[1]} columnas")
+    
+    # 1NF - Atomización de ORGANIZATION_TYPE (solo si no existe ya ORGANIZATION_TYPE_2)
+    if 'ORGANIZATION_TYPE' in df.columns and 'ORGANIZATION_TYPE_2' not in df.columns:
+        print("\nAplicando Primera Forma Normal (1NF) - Atomización de ORGANIZATION_TYPE")
+        df['ORGANIZATION_TYPE_2'] = df['ORGANIZATION_TYPE'].apply(get_organization_type_2)
+        df['ORGANIZATION_TYPE'] = df['ORGANIZATION_TYPE'].apply(clean_organization_type)
+    
+    # Crear tablas de dimensiones para columnas categóricas NO en exclude_columns
     print("\nCreando tablas de dimensiones...")
     
-    # Identificar columnas categóricas
-    categorical_columns = [col for col in df.columns if df[col].dtype == 'object']
+    categorical_columns = [
+        col for col in df.columns 
+        if df[col].dtype == 'object' and col not in exclude_columns
+    ]
+    
     dimension_tables = {}
     
     for col in categorical_columns:
-        # Extraer valores únicos no NaN para la tabla de dimensión
         unique_values = df[col].dropna().unique()
         
         if len(unique_values) > 0:
-            # Crear tabla de dimensión
             dim_df = pd.DataFrame({
                 f'{col}_ID': range(1, len(unique_values) + 1),
                 col: unique_values
             })
             dimension_tables[f'dim_{col.lower()}'] = dim_df
             
-            # Crear mapeo y reemplazar valores con IDs
             mapping = dict(zip(dim_df[col], dim_df[f'{col}_ID']))
             df[col] = df[col].map(mapping)
             df.rename(columns={col: f'{col}_ID'}, inplace=True)
             
             print(f"  - {col}: {len(unique_values)} valores únicos")
     
-    # ========================================================================
-    # 4. EXPORTACIÓN DE DATOS NORMALIZADOS (si no se deben saltear)
-    # ========================================================================
-    print("\nExportando datos normalizados...")
-    
-    # Crear directorio de salida
+    # Guardar dataset principal
     ref_name = csv_name.replace('.csv', '')
-    extract_dir = output_dir / ref_name# output_dir  ref_name + '/'
-    print(extract_dir)
+    extract_dir = output_dir / ref_name
+    
     if not os.path.exists(extract_dir):
         os.makedirs(extract_dir)
     
-    # Guardar dataset principal
+    df = convert_to_nullable_int(df)
     df.to_csv(extract_dir / csv_name, index=False)
-    print(f"  ✓ Dataset principal guardado: {csv_name}")
+    print(f"\n✓ Dataset principal guardado: {csv_name}")
     
     # Guardar tablas de dimensiones
     for name, dim_df in dimension_tables.items():
@@ -147,252 +227,134 @@ def normalize_dataset(csv_name, data_path, output_dir, skip_dimension_export=Fal
     return df, dimension_tables
 
 
-def apply_overlap_corrections(output_dir):
-    """
-    Aplica correcciones de solapamiento de dimensiones entre
-    application_train y previous_application.
+def main():
+    """Función principal que ejecuta la normalización de todos los datasets."""
     
-    Identifica 3 tablas de dimensiones compartidas y ajusta los IDs
-    en ambos datasets para que coincidan con las dimensiones de referencia.
-    """
+    BASE_DIR = Path(__file__).resolve().parent
+    data_path = BASE_DIR / ".." / ".." / "data" / "raw"
+    output_dir = BASE_DIR / ".." / ".." / "data" / "db_input"
+    mappings_path = BASE_DIR / ".." / "utils" / "mappings.json"
     
-    print("\n" + "="*70)
-    print("EJECUCIÓN DE CORRECCIONES DE OVERLAP")
-    print("="*70)
+    # Cargar mappings.json
+    mappings_dict = load_mappings(mappings_path)
+    print(f"\nMappings cargados: {list(mappings_dict.keys())}")
     
-    # ========================================================================
-    # 1. CREAR DIMENSIONES DE REFERENCIA
-    # ========================================================================
-    print("\n1. Creando tablas de dimensiones de referencia...")
+    # Normalizar claves del mapping a mayúsculas para comparar con columnas de dataframes
+    mapping_columns = {k.upper(): v for k, v in mappings_dict.items()}
     
-    # dim_name_contract_type: usar como referencia previous_application
-    dim_name_contract_type_ref = pd.read_csv(
-        output_dir / 'previous_application' / 'dim_name_contract_type.csv'
-    )
-    print("  ✓ dim_name_contract_type (referencia: previous_application)")
-    
-    # dim_weekday_appr_process_start: crear versión estandarizada
-    dim_weekday_appr_process_start_data = [
-        {'WEEKDAY_APPR_PROCESS_START_ID': 1, 'WEEKDAY_APPR_PROCESS_START': 'MONDAY'},
-        {'WEEKDAY_APPR_PROCESS_START_ID': 2, 'WEEKDAY_APPR_PROCESS_START': 'TUESDAY'},
-        {'WEEKDAY_APPR_PROCESS_START_ID': 3, 'WEEKDAY_APPR_PROCESS_START': 'WEDNESDAY'},
-        {'WEEKDAY_APPR_PROCESS_START_ID': 4, 'WEEKDAY_APPR_PROCESS_START': 'THURSDAY'},
-        {'WEEKDAY_APPR_PROCESS_START_ID': 5, 'WEEKDAY_APPR_PROCESS_START': 'FRIDAY'},
-        {'WEEKDAY_APPR_PROCESS_START_ID': 6, 'WEEKDAY_APPR_PROCESS_START': 'SATURDAY'},
-        {'WEEKDAY_APPR_PROCESS_START_ID': 7, 'WEEKDAY_APPR_PROCESS_START': 'SUNDAY'}
-    ]
-    dim_weekday_appr_process_start_ref = pd.DataFrame(
-        dim_weekday_appr_process_start_data
-    )
-    print("  ✓ dim_weekday_appr_process_start (versión estandarizada)")
-    
-    # dim_name_type_suite: usar como referencia previous_application
-    dim_name_type_suite_ref = pd.read_csv(
-        output_dir / 'previous_application' / 'dim_name_type_suite.csv'
-    )
-    print("  ✓ dim_name_type_suite (referencia: previous_application)")
-    
-    # ========================================================================
-    # 2. CARGAR DATASETS Y CORREGIR application_train
-    # ========================================================================
-    print("\n2. Corrigiendo application_train...")
-    application_train_path = output_dir / 'application_train' / 'application_train.csv'    
-    application_train = pd.read_csv(application_train_path)
-    
-    # Convertir columnas ID a Int64
-    for col in application_train.columns:
-        if 'ID' in col:
-            application_train[col] = application_train[col].astype('Int64')
-    
-    # Mapeos para application_train
-    mappings_app_train = {
-        'NAME_CONTRACT_TYPE_ID': {
-            1: 2,  # Cash loans: 1 -> 2
-            2: 3   # Revolving loans: 2 -> 3
-        },
-        'WEEKDAY_APPR_PROCESS_START_ID': {
-            1: 3,  # WEDNESDAY: 1 -> 3
-            2: 1,  # MONDAY: 2 -> 1
-            3: 4,  # THURSDAY: 3 -> 4
-            4: 7,  # SUNDAY: 4 -> 7
-            5: 6,  # SATURDAY: 5 -> 6
-            6: 5,  # FRIDAY: 6 -> 5
-            7: 2   # TUESDAY: 7 -> 2
-        },
-        'NAME_TYPE_SUITE_ID': {
-            1: 1,  # Unaccompanied: 1 -> 1
-            2: 3,  # Family: 2 -> 3
-            3: 2,  # Spouse, partner: 3 -> 2
-            4: 4,  # Children: 4 -> 4
-            5: 6,  # Other_A: 5 -> 6
-            6: 5,  # Other_B: 6 -> 5
-            7: 7   # Group of people: 7 -> 7
-        }
-    }
-    
-    for col_name, mapping in mappings_app_train.items():
-        if col_name in application_train.columns:
-            application_train[col_name] = application_train[col_name].replace(mapping)
-            print(f"  ✓ {col_name} remapeado")
-    
-    # ========================================================================
-    # 3. CARGAR DATASETS Y CORREGIR previous_application
-    # ========================================================================
-    print("\n3. Corrigiendo previous_application...")
-    previous_application_path = output_dir / 'previous_application' / 'previous_application.csv'
-    previous_application = pd.read_csv(previous_application_path)
-    
-    # Convertir columnas ID a Int64
-    for col in previous_application.columns:
-        if 'ID' in col:
-            previous_application[col] = previous_application[col].astype('Int64')
-    
-    # Mapeos para previous_application
-    mappings_prev_app = {
-        'WEEKDAY_APPR_PROCESS_START_ID': {
-            1: 6,  # SATURDAY: 1 -> 6
-            2: 4,  # THURSDAY: 2 -> 4
-            3: 2,  # TUESDAY: 3 -> 2
-            4: 1,  # MONDAY: 4 -> 1
-            5: 5,  # FRIDAY: 5 -> 5
-            6: 7,  # SUNDAY: 6 -> 7
-            7: 3   # WEDNESDAY: 7 -> 3
-        }
-    }
-    
-    # Aplicar mapeos
-    for col_name, mapping in mappings_prev_app.items():
-        if col_name in previous_application.columns:
-            previous_application[col_name] = previous_application[col_name].replace(mapping)
-            print(f"  ✓ {col_name} remapeado")
-    
-    # ========================================================================
-    # 4. EXPORTAR DATOS CORREGIDOS Y DIMENSIONES DE REFERENCIA
-    # ========================================================================
-    print("\n4. Exportando datos corregidos y dimensiones de referencia...")
-    
-    # Crear directorio common_dims si no existe
+    # Crear directorio common_dims y generar tablas de dimensiones desde mappings.json
     common_dims_dir = output_dir / 'common_dims'
     if not os.path.exists(common_dims_dir):
         os.makedirs(common_dims_dir)
     
-    # Guardar datasets corregidos
-    application_train.to_csv(application_train_path, index=False)
-    print("  ✓ application_train.csv exportado")
+    print("\n--- CREANDO DIMENSIONES COMUNES DESDE MAPPINGS.JSON ---")
+    for col_name, mapping in mappings_dict.items():
+        col_name_upper = col_name.upper()
+        dim_data = []
+        for value, id_val in sorted(mapping.items(), key=lambda x: x[1]):
+            dim_data.append({f'{col_name_upper}_ID': id_val, col_name_upper: value})
+        
+        dim_df = pd.DataFrame(dim_data)
+        dim_file_name = f'dim_{col_name.lower()}.csv'
+        dim_df.to_csv(common_dims_dir / dim_file_name, index=False)
+        print(f"  ✓ {dim_file_name}: {len(dim_data)} valores")
     
-    previous_application.to_csv(previous_application_path, index=False)
-    print("  ✓ previous_application.csv exportado")
-    
-    # Guardar dimensiones de referencia
-    dim_name_contract_type_ref.to_csv(output_dir / 'common_dims' / 'dim_name_contract_type.csv', index=False)
-    print("  ✓ dim_name_contract_type.csv exportado")
-    
-    dim_weekday_appr_process_start_ref.to_csv(output_dir / 'common_dims' / 'dim_weekday_appr_process_start.csv', index=False)
-    print("  ✓ dim_weekday_appr_process_start.csv exportado")
-    
-    dim_name_type_suite_ref.to_csv(output_dir / 'common_dims' / 'dim_name_type_suite.csv', index=False)
-    print("  ✓ dim_name_type_suite.csv exportado")
-    
-    print(f"\nDatos corregidos guardados en: {output_dir}")
-
-
-def main():
-    """Función principal que ejecuta la normalización de todos los datasets."""
-    
-    # Configuración de rutas
-    BASE_DIR = Path(__file__).resolve().parent # Obtiene la carpeta donde está el script, sin importar desde dónde lo lances
-    data_path = BASE_DIR / ".." / ".." / "data" / "raw"
-    output_dir = BASE_DIR / ".." / ".." / "data" / "db_input"
-
-    # Datasets a procesar (sin application_train y previous_application)
-    datasets_standard = [
-        # 'application_test.csv',
+    # Todos los datasets a procesar
+    all_datasets = [
+        'application_train.csv',
+        'application_test.csv',  # Incluido pero no procesado según indicación
         'bureau_balance.csv',
         'bureau.csv',
         'credit_card_balance.csv',
         'installments_payments.csv',
-        'POS_CASH_balance.csv'
-    ]
-    
-    # Datasets con correcciones de overlap
-    datasets_overlap = [
-        'application_train.csv',
+        'POS_CASH_balance.csv',
         'previous_application.csv'
     ]
-
+    
+    # Datasets excluidos explícitamente
+    excluded_files = ['application_test.csv']
+    
+    # Determinar qué datasets tienen columnas del mappings.json
+    datasets_with_mappings = []
+    datasets_without_mappings = []
+    mapping_columns_upper = list(mapping_columns.keys())
+    
+    for csv_name in all_datasets:
+        if csv_name in excluded_files:
+            continue
+            
+        try:
+            df_temp = pd.read_csv(data_path / csv_name, nrows=0)
+            cols_in_mappings = [col for col in mapping_columns_upper if col in df_temp.columns]
+            
+            if cols_in_mappings:
+                datasets_with_mappings.append(csv_name)
+            else:
+                datasets_without_mappings.append(csv_name)
+        except FileNotFoundError:
+            print(f"⚠ Archivo no encontrado: {csv_name}")
+    
     print("\n" + "="*70)
     print("NORMALIZACIÓN DE BASE DE DATOS - SCRIPT DE EJECUCIÓN")
     print("="*70)
-
+    
     # ========================================================================
-    # 1. PROCESAR DATASETS ESTÁNDAR
+    # FASE 1: REMAPEO CON MAPPINGS.JSON
     # ========================================================================
-    print("\n--- FASE 1: NORMALIZACIÓN ESTÁNDAR ---")
-    for csv_name in datasets_standard:
+    print("\n--- FASE 1: REMAPEO CON MAPPINGS.JSON ---")
+    
+    # Procesar datasets que tienen columnas del mappings.json
+    for csv_name in datasets_with_mappings:
         try:
-            normalize_dataset(csv_name, data_path, output_dir)
+            remap_with_mappings(csv_name, data_path, output_dir, mappings_dict)
         except FileNotFoundError:
             print(f"⚠ Archivo no encontrado: {csv_name}")
         except Exception as e:
             print(f"✗ Error procesando {csv_name}: {str(e)}")
     
     # ========================================================================
-    # 2. PROCESAR DATASETS CON OVERLAP (SIN EXPORTAR DIMENSIONES AÚN)
+    # FASE 2: NORMALIZACIÓN ESTÁNDAR
     # ========================================================================
-    print("\n--- FASE 2: NORMALIZACIÓN CON CORRECCIONES DE OVERLAP ---")
-    for csv_name in datasets_overlap:
+    print("\n--- FASE 2: NORMALIZACIÓN ESTÁNDAR ---")
+    
+    # Datasets procesados en Fase 1 (ya tienen el remapeo de mappings.json)
+    datasets_phase1 = ['application_train.csv', 'credit_card_balance.csv', 'POS_CASH_balance.csv', 'previous_application.csv']
+    
+    # Todos los datasets a normalizar
+    all_datasets_to_normalize = [
+        'application_train.csv',
+        'bureau_balance.csv',
+        'bureau.csv',
+        'credit_card_balance.csv',
+        'installments_payments.csv',
+        'POS_CASH_balance.csv',
+        'previous_application.csv'
+    ]
+    
+    for csv_name in all_datasets_to_normalize:
+        # Los datasets de Fase 1 ya fueron procesados, leer desde output_dir
+        # Los demás leer desde data_path (original)
+        if csv_name in datasets_phase1:
+            input_path = output_dir / csv_name.replace('.csv', '')
+        else:
+            input_path = data_path
+        
         try:
-            normalize_dataset(
-                csv_name,
-                data_path,
-                output_dir,
-                skip_dimension_export=True
+            normalize_dataset_standard(
+                csv_name, 
+                input_path, 
+                output_dir, 
+                exclude_columns=mapping_columns_upper
             )
         except FileNotFoundError:
             print(f"⚠ Archivo no encontrado: {csv_name}")
         except Exception as e:
             print(f"✗ Error procesando {csv_name}: {str(e)}")
     
-    # ========================================================================
-    # 3. APLICAR CORRECCIONES DE OVERLAP
-    # ========================================================================
-    print("\n--- FASE 3: APLICACIÓN DE CORRECCIONES DE OVERLAP ---")
-    try:
-        apply_overlap_corrections(output_dir)
-    except Exception as e:
-        print(f"✗ Error en correcciones de overlap: {str(e)}")
-    
-    # ========================================================================
-    # 4. LIMPIAR DIRECTORIOS TEMPORALES
-    # ========================================================================
-    print("\n--- FASE 4: LIMPIEZA DE ARCHIVOS TEMPORALES ---")
-    try:
-        # Obtener lista de archivos CSV que existen en common_dims
-        common_dims_dir = output_dir / 'common_dims'
-        if os.path.exists(common_dims_dir):
-            common_dims_files = set(f for f in os.listdir(common_dims_dir) if f.endswith('.csv'))
-            print(f"  Archivos de referencia encontrados en common_dims: {len(common_dims_files)}")
-            
-            # Para cada dataset overlap, eliminar los CSV de dimensiones que coinciden
-            for dataset in datasets_overlap:
-                table_name = dataset.replace('.csv', '')
-                table_dir = output_dir / table_name
-                
-                if os.path.exists(table_dir):
-                    # Buscar y eliminar archivos CSV de dimensiones que coincidan
-                    for file in os.listdir(table_dir):
-                        if file.endswith('.csv') and file in common_dims_files:
-                            file_path = table_dir / file
-                            os.remove(file_path)
-                            print(f"  ✓ Archivo eliminado: {file} de {table_name}/")
-        else:
-            print(f"⚠ Directorio common_dims no encontrado")
-    except Exception as e:
-        print(f"⚠ Error en limpieza: {str(e)}")
-    
     print("\n" + "="*70)
     print("NORMALIZACIÓN COMPLETADA")
     print("="*70 + "\n")
+
 
 if __name__ == '__main__':
     main()

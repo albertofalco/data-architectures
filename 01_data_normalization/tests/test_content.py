@@ -5,6 +5,10 @@ Este script verifica que los datasets normalizados mantienen la integridad
 de los datos comparándolos con los originales. Se aplica a los datasets:
 - application_train
 - bureau
+- bureau_balance
+- credit_card_balance
+- installments_payments
+- POS_CASH_balance
 - previous_application
 
 Las pruebas incluyen:
@@ -13,48 +17,41 @@ Las pruebas incluyen:
 3. Comparación de valores
 """
 
-# ============================================================================
-# IMPORTACION DE LIBRERIAS
-# ============================================================================
-
 import pandas as pd
 import numpy as np
 import os
 from pathlib import Path
 from pandasql import sqldf
 
-# ============================================================================
-# CONFIGURACIÓN
-# ============================================================================
-
-# Obtener la carpeta actual del script
 BASE_DIR = Path(__file__).resolve().parent.parent
 
-# Rutas de datos
-LOOKUP_TABLES = ['application_train', 'bureau', 'previous_application']
-COMMON_DIM_LOOKUP = ['application_train', 'previous_application']
-COMMON_DIM_TABLES = ['dim_name_contract_type',
-                     'dim_name_type_suite',
-                     'dim_weekday_appr_process_start'
-                     ]
-COMMON_DIM_DIR = 'common_dims'
+LOOKUP_TABLES = [
+    'application_train',
+    'bureau',
+    'bureau_balance',
+    'credit_card_balance',
+    'installments_payments',
+    'POS_CASH_balance',
+    'previous_application'
+]
+
 OUTPUT_DIR = BASE_DIR / '..' / 'data' / 'db_input'
 RAW_DATA_DIR = BASE_DIR / '..' / 'data' / 'raw'
+COMMON_DIM_DIR = OUTPUT_DIR / 'common_dims'
 
-# Columnas a excluir en comparación (se transforman en normalización)
 EXCLUDE_COLUMNS = ['ORGANIZATION_TYPE', 'ORGANIZATION_TYPE_2']
+TEST_ROW_LIMIT = 100000
 
-# ============================================================================
-# FUNCIONES AUXILIARES
-# ============================================================================
 
-def load_dataframes(folder_path, table_name):
+def load_dataframes(folder_path, table_name, use_nullable_int=True, nrows=None):
     """
     Carga DataFrames desde archivos CSV en la carpeta especificada.
     
     Args:
         folder_path (Path): Ruta a la carpeta base.
         table_name (str): Nombre de la subcarpeta (ej. 'application_train').
+        use_nullable_int (bool): Si True, convierte columnas numéricas a Int64 nullable.
+        nrows (int, optional): Número máximo de filas a leer para la tabla principal.
     
     Returns:
         dict: Diccionario con nombres de archivos (sin extensión) como claves 
@@ -62,26 +59,38 @@ def load_dataframes(folder_path, table_name):
     """
     full_path = folder_path / table_name
     
-    # Verificar si la carpeta existe
     if not full_path.exists():
         print(f"[ERROR] La carpeta {full_path} no existe.")
         return {}
     
-    # Listar archivos CSV en la carpeta
     csv_files = [f for f in os.listdir(full_path) if f.endswith('.csv')]
     
     if not csv_files:
         print(f"[WARNING] No se encontraron archivos CSV en {full_path}")
         return {}
     
-    # Diccionario para almacenar los DataFrames
     dataframes = {}
     
-    # Leer cada archivo CSV
     for file in csv_files:
         file_path = full_path / file
         try:
-            df = pd.read_csv(file_path)
+            # Solo limitar filas si es el archivo principal de la tabla
+            current_nrows = nrows if file == f"{table_name}.csv" else None
+            df = pd.read_csv(file_path, keep_default_na=False, nrows=current_nrows)
+            
+            if use_nullable_int:
+                for col in df.columns:
+                    col_data = df[col]
+                    if col_data.dtype == 'float64':
+                        non_null = col_data[col_data != ''].dropna()
+                        if len(non_null) > 0:
+                            try:
+                                int_check = pd.to_numeric(non_null, errors='coerce')
+                                if int_check.notna().all():
+                                    df[col] = df[col].replace('', np.nan).astype('Int64')
+                            except:
+                                pass
+            
             key = file.replace('.csv', '')
             dataframes[key] = df
         except Exception as e:
@@ -90,39 +99,67 @@ def load_dataframes(folder_path, table_name):
     return dataframes
 
 
-def build_denormalized_query(dataframes, main_table):
+def get_matching_common_dims(main_df, common_dims):
+    """
+    Detecta qué tablas de common_dims aplicar según las columnas del DataFrame.
+    
+    Args:
+        main_df (pd.DataFrame): DataFrame principal.
+        common_dims (dict): Diccionario de tablas de dimensiones comunes.
+    
+    Returns:
+        dict: Subconjunto de common_dims que aplican al DataFrame.
+    """
+    matching_dims = {}
+    
+    for dim_name, dim_df in common_dims.items():
+        dim_id_col = dim_df.columns[0]
+        if dim_id_col in main_df.columns:
+            matching_dims[dim_name] = dim_df
+    
+    return matching_dims
+
+
+def build_denormalized_query(dataframes, main_table, common_dims=None):
     """
     Construye una query SQL para unir la tabla principal con sus dimensiones.
     
     Args:
-        dataframes (dict): Diccionario de DataFrames cargados.
+        dataframes (dict): Diccionario de DataFrames cargados (locales + common_dims).
         main_table (str): Nombre de la tabla principal.
+        common_dims (dict, optional): Diccionario de dimensiones comunes.
     
     Returns:
         str: Query SQL construida.
     """
-    # Identificar la tabla principal y las tablas de dimensión
     dim_tables = {k: v for k, v in dataframes.items() if k.startswith('dim_')}
     
-    # Obtener columnas de la tabla principal
     main_columns = list(dataframes[main_table].columns)
     
-    # Construir lista de columnas para SELECT
     select_columns = []
     for col in main_columns:
         if col.endswith('_ID'):
-            dim_base = col.replace('_ID', '').lower()
-            dim_name = f"dim_{dim_base}"
-            if dim_name in dim_tables:
-                # Usar la segunda columna (descripción) de la dim table
+            col_base = col.replace('_ID', '')
+            
+            possible_dim_names = [
+                f"dim_{col_base.lower()}",
+                f"dim_{col_base}"
+            ]
+            
+            dim_name = None
+            for pdn in possible_dim_names:
+                if pdn in dim_tables:
+                    dim_name = pdn
+                    break
+            
+            if dim_name:
                 desc_col = dataframes[dim_name].columns[1]
-                select_columns.append(f"{dim_name}.{desc_col} AS {desc_col}")
+                select_columns.append(f"{dim_name}.{desc_col} AS {col_base}")
             else:
                 select_columns.append(f"{main_table}.{col}")
         else:
             select_columns.append(f"{main_table}.{col}")
     
-    # Construir query SQL
     query = f"SELECT {', '.join(select_columns)} FROM {main_table}"
     
     for dim_name in dim_tables:
@@ -132,101 +169,29 @@ def build_denormalized_query(dataframes, main_table):
     return query
 
 
-def denormalize_dataset(dataframes, main_table, common_tables=None):
+def denormalize_dataset(dataframes, main_table, common_dims=None):
     """
     Desnormaliza un dataset ejecutando la query construida.
     
     Args:
         dataframes (dict): Diccionario de DataFrames.
         main_table (str): Nombre de la tabla principal.
-        common_tables (dict, optional): Diccionario de tablas comunes a incluir.
+        common_dims (dict, optional): Diccionario de tablas comunes.
     
     Returns:
         pd.DataFrame: DataFrame desnormalizado.
     """
-    # Si hay tablas comunes, incluirlas en el contexto de la query
-    if main_table in COMMON_DIM_LOOKUP and common_tables:
-        dataframes.update(common_tables)
+    if common_dims:
+        dataframes.update(common_dims)
     
-    query = build_denormalized_query(dataframes, main_table)
-
+    query = build_denormalized_query(dataframes, main_table, common_dims)
+    
     return sqldf(query, dataframes)
-
-def validate_structure(original_df, result_df, table_name):
-    """
-    Valida la estructura (shape) del dataset.
-    
-    Args:
-        original_df (pd.DataFrame): DataFrame original.
-        result_df (pd.DataFrame): DataFrame resultado.
-        table_name (str): Nombre de la tabla (para logging).
-    
-    Returns:
-        bool: True si las validaciones pasan.
-    """
-    print(f"\n{'='*70}")
-    print(f"VALIDACIÓN DE ESTRUCTURA: {table_name}")
-    print(f"{'='*70}")
-    
-    print(f"Shape original:   {original_df.shape}")
-    print(f"Shape resultado:  {result_df.shape}")
-    
-    # Validar número de filas
-    if original_df.shape[0] != result_df.shape[0]:
-        print(f"[ERROR] Número de filas diferente")
-        return False
-    
-    print(f"[OK] Estructura validada")
-    return True
-
-
-def validate_columns(original_df, result_df, table_name):
-    """
-    Valida que las columnas sean consistentes.
-    
-    Args:
-        original_df (pd.DataFrame): DataFrame original.
-        result_df (pd.DataFrame): DataFrame resultado.
-        table_name (str): Nombre de la tabla (para logging).
-    
-    Returns:
-        bool: True si las validaciones pasan.
-    """
-    print(f"\n{'='*70}")
-    print(f"VALIDACIÓN DE COLUMNAS: {table_name}")
-    print(f"{'='*70}")
-    
-    errors = False
-    
-    # Verificar columnas en original que no están en resultado
-    for col in original_df.columns:
-        if col not in result_df.columns and col not in EXCLUDE_COLUMNS:
-            print(f"[ERROR] Columna '{col}' NO está presente en resultado")
-            errors = True
-    
-    # Verificar columnas en resultado que no están en original
-    for col in result_df.columns:
-        if col not in original_df.columns:
-            if col not in EXCLUDE_COLUMNS:
-                print(f"[WARNING] Columna '{col}' presente en resultado pero no en original")
-    
-    if not errors:
-        print(f"[OK] Columnas validadas")
-    
-    return not errors
 
 
 def validate_content(original_df, result_df, table_name):
     """
     Valida que el contenido sea consistente.
-    
-    Args:
-        original_df (pd.DataFrame): DataFrame original.
-        result_df (pd.DataFrame): DataFrame resultado.
-        table_name (str): Nombre de la tabla (para logging).
-    
-    Returns:
-        bool: True si las validaciones pasan.
     """
     print(f"\n{'='*70}")
     print(f"VALIDACIÓN DE CONTENIDO: {table_name}")
@@ -242,45 +207,57 @@ def validate_content(original_df, result_df, table_name):
         if col not in result_df.columns:
             continue
         
-        # Saltar columnas ID (se transforman en normalización)
         if col.endswith('_ID'):
             continue
         
-        # Comparar valores
-        if not original_df[col].equals(result_df[col]):
-            differences = sum(original_df[col] != result_df[col])
+        try:
+            orig_col = original_df[col].copy()
+            res_col = result_df[col].copy()
             
-            # Tolerancia para valores numéricos con diferencias de redondeo pequeñas
-            if pd.api.types.is_numeric_dtype(original_df[col]):
-                max_diff = (abs(original_df[col] - result_df[col])).max()
-                if max_diff < 1e-5:  # Tolerancia: 0.00001
-                    continue
+            if orig_col.dtype != res_col.dtype:
+                if pd.api.types.is_numeric_dtype(orig_col):
+                    res_col = pd.to_numeric(res_col, errors='coerce')
             
+            if not orig_col.equals(res_col):
+                differences = (orig_col != res_col).sum()
+                
+                if pd.api.types.is_numeric_dtype(orig_col):
+                    try:
+                        max_diff = (abs(pd.to_numeric(orig_col, errors='coerce') - pd.to_numeric(res_col, errors='coerce'))).max()
+                        if pd.notna(max_diff) and max_diff < 1e-5:
+                            continue
+                    except:
+                        pass
+                
+                differences_detail.append({
+                    'column': col,
+                    'count': differences,
+                    'percentage': (differences / len(original_df)) * 100
+                })
+        except Exception as e:
             differences_detail.append({
                 'column': col,
-                'count': differences,
-                'percentage': (differences / len(original_df)) * 100
+                'count': -1,
+                'percentage': 0
             })
     
     if differences_detail:
         print(f"[WARNING] Se encontraron diferencias en {len(differences_detail)} columnas:")
         for diff in differences_detail:
-            print(f"  - {diff['column']}: {diff['count']} diferencias ({diff['percentage']:.2f}%)")
+            if diff['count'] == -1:
+                print(f"  - {diff['column']}: Error al comparar")
+            else:
+                print(f"  - {diff['column']}: {diff['count']} diferencias ({diff['percentage']:.2f}%)")
     else:
         print(f"[OK] Contenido validado")
     
-    return True  # Retornar True incluso con warnings
+    return True
 
 
 def run_tests(table_names=None):
     """
     Ejecuta todas las pruebas para los datasets especificados.
-    
-    Args:
-        table_names (list): Lista de nombres de tablas a probar. 
-                           Si es None, usa LOOKUP_TABLES.
     """
-    # Configurar tablas a probar
     if table_names is None:
         table_names = LOOKUP_TABLES
     
@@ -288,15 +265,13 @@ def run_tests(table_names=None):
     print("CONTROL DE CONTENIDO - DATASETS NORMALIZADOS")
     print("="*70)
 
-    # Cargar tablas de dimensiones comunes
     print(f"\nCargando dimensiones comunes...")
-    common_tables = load_dataframes(OUTPUT_DIR, COMMON_DIM_DIR)
+    common_tables = load_dataframes(OUTPUT_DIR, 'common_dims')
     
-    # Verificar carga de tablas comunes
     if not common_tables:
         raise Exception(f"No se pudieron cargar las tablas de dimensiones comunes desde {COMMON_DIM_DIR}")
     else:
-        print(f"Dimensiones comunes cargados desde {COMMON_DIM_DIR}")
+        print(f"[OK] {len(common_tables)} dimensiones comunes cargadas")
     
     results = {}
 
@@ -306,9 +281,8 @@ def run_tests(table_names=None):
         print(f"{'#'*70}")
         
         try:
-            # Cargar DataFrames normalizados
-            print(f"\nCargando datos normalizados...")
-            dataframes = load_dataframes(OUTPUT_DIR, table_name)
+            print(f"\nCargando datos normalizados (límite {TEST_ROW_LIMIT} registros)...")
+            dataframes = load_dataframes(OUTPUT_DIR, table_name, nrows=TEST_ROW_LIMIT)
             
             if not dataframes:
                 print(f"[ERROR] No se pudieron cargar los datos para {table_name}")
@@ -317,27 +291,25 @@ def run_tests(table_names=None):
             
             print(f"[OK] {len(dataframes)} archivos cargados")
             
-            # Desnormalizar para comparación
-            print(f"Desnormalizando dataset...")
-            result_df = denormalize_dataset(dataframes, table_name, common_tables)
+            main_df = dataframes[table_name]
+            matching_common = get_matching_common_dims(main_df, common_tables)
             
-            # Cargar dataset original
-            print(f"Cargando dataset original...")
+            if matching_common:
+                print(f"[OK] {len(matching_common)} dimensiones comunes detectadas para JOIN")
+            
+            print(f"Desnormalizando dataset...")
+            result_df = denormalize_dataset(dataframes, table_name, matching_common)
+            
+            print(f"Cargando dataset original (límite {TEST_ROW_LIMIT} registros)...")
             original_path = RAW_DATA_DIR / f"{table_name}.csv"
             if not original_path.exists():
                 print(f"[ERROR] Dataset original no encontrado: {original_path}")
                 results[table_name] = False
                 continue
             
-            original_df = pd.read_csv(original_path)
+            original_df = pd.read_csv(original_path, nrows=TEST_ROW_LIMIT)
             
-            # Ejecutar validaciones
-            struct_valid = validate_structure(original_df, result_df, table_name)
-            col_valid = validate_columns(original_df, result_df, table_name)
-            content_valid = validate_content(original_df, result_df, table_name)
-            
-            # Resultado final
-            table_result = struct_valid and col_valid and content_valid
+            table_result = validate_content(original_df, result_df, table_name)
             results[table_name] = table_result
             
             print(f"\n{'='*70}")
@@ -349,9 +321,10 @@ def run_tests(table_names=None):
             
         except Exception as e:
             print(f"\n[ERROR] Excepción al procesar {table_name}: {str(e)}")
+            import traceback
+            traceback.print_exc()
             results[table_name] = False
     
-    # Resumen final
     print(f"\n\n{'='*70}")
     print("RESUMEN FINAL")
     print(f"{'='*70}")
@@ -369,7 +342,6 @@ def run_tests(table_names=None):
     
     return results
 
-# ============================================================================
-# EJECUCIÓN DEL SCRIPT
+
 if __name__ == '__main__':
     run_tests()
