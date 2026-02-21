@@ -1,0 +1,4 @@
+target_tables:
+  - table_name: "application_train"
+    limit: 30000
+    order_col: "SK_ID_CURR"

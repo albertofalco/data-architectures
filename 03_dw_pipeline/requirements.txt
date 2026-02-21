@@ -1,0 +1,5 @@
+PyYAML
+pandas==2.3.3
+sqlalchemy
+mysql-connector-python
+python-dotenv

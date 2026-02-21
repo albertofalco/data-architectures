@@ -1,5 +1,14 @@
+"""
+Backup de filas de tablas de base de datos a CSV.
+
+Este script extrae los últimos N registros de tablas específicas de una base de datos
+MySQL y los guarda en archivos CSV en el directorio assets. La extracción se realiza
+ordenando por una columna especificada en orden descendente.
+"""
+
 import sys
 import os
+import yaml
 import pandas as pd
 from sqlalchemy import create_engine, inspect
 from dotenv import load_dotenv
@@ -10,6 +19,7 @@ CURRENT_DIR = Path(__file__).resolve().parent
 PROJECT_ROOT = CURRENT_DIR.parent.parent
 ASSETS_DIR = CURRENT_DIR.parent / "assets"
 ENV_PATH = PROJECT_ROOT / ".env"
+CONFIG_PATH = CURRENT_DIR / "config.yml"
 
 # Cargar variables de entorno
 if not ENV_PATH.exists():
@@ -17,8 +27,21 @@ if not ENV_PATH.exists():
     sys.exit(1)
 load_dotenv(ENV_PATH)
 
-# Constantes definidas por requerimiento
-TARGET_TABLES = [("application_train", 70000, "SK_ID_CURR")]
+# Cargar configuración desde YAML
+if not CONFIG_PATH.exists():
+    print(f"Error: No se encontró el archivo de configuración en {CONFIG_PATH}")
+    sys.exit(1)
+
+try:
+    with open(CONFIG_PATH, "r") as f:
+        config = yaml.safe_load(f)
+        target_list = config.get("target_tables", [])
+        TARGET_TABLES = [
+            (t["table_name"], t["limit"], t["order_col"]) for t in target_list
+        ]
+except Exception as e:
+    print(f"Error al leer la configuración: {e}")
+    sys.exit(1)
 
 def get_db_connection():
     try:
@@ -33,6 +56,7 @@ def get_db_connection():
 
         # Usar mysql-connector-python
         connection_url = f"mysql+mysqlconnector://{user}:{password}@{host}/{dbname}"
+        print(f"\nConectando a la base de datos: {dbname}...\n")
         engine = create_engine(connection_url)
         return engine
     except Exception as e:
@@ -67,6 +91,7 @@ def main():
             # Nota: Ordenamos descendente para obtener los últimos, pero el dataframe tendrá ese orden.
             query = f"SELECT * FROM {table_name} ORDER BY {order_col} DESC LIMIT {limit}"
             df = pd.read_sql(query, engine)
+            df = df.sort_values(by=order_col, ascending=True)
             
             if df.empty:
                 print(f"Advertencia: No se encontraron registros para la tabla {table_name}.")

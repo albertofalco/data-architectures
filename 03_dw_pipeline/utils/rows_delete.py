@@ -1,5 +1,13 @@
+"""
+Eliminación de registros de tablas.
+
+Este script elimina los últimos registros agregados a las tablas
+especificadas en el archivo de configuración config.yml.
+"""
+
 import sys
 import os
+import yaml
 import pandas as pd
 from sqlalchemy import create_engine, inspect, text
 from dotenv import load_dotenv
@@ -9,6 +17,7 @@ from pathlib import Path
 CURRENT_DIR = Path(__file__).resolve().parent
 PROJECT_ROOT = CURRENT_DIR.parent.parent
 ENV_PATH = PROJECT_ROOT / ".env"
+CONFIG_PATH = CURRENT_DIR / "config.yml"
 
 # Cargar variables de entorno
 if not ENV_PATH.exists():
@@ -16,8 +25,21 @@ if not ENV_PATH.exists():
     sys.exit(1)
 load_dotenv(ENV_PATH)
 
-# Constantes definidas por requerimiento
-TARGET_TABLES = [("application_train", 70000, "SK_ID_CURR")]
+# Cargar configuración desde YAML
+if not CONFIG_PATH.exists():
+    print(f"Error: No se encontró el archivo de configuración en {CONFIG_PATH}")
+    sys.exit(1)
+
+try:
+    with open(CONFIG_PATH, "r") as f:
+        config = yaml.safe_load(f)
+        target_list = config.get("target_tables", [])
+        TARGET_TABLES = [
+            (t["table_name"], t["limit"], t["order_col"]) for t in target_list
+        ]
+except Exception as e:
+    print(f"Error al leer la configuración: {e}")
+    sys.exit(1)
 
 def get_db_connection():
     try:
@@ -31,6 +53,7 @@ def get_db_connection():
              sys.exit(1)
 
         connection_url = f"mysql+mysqlconnector://{user}:{password}@{host}/{dbname}"
+        print(f"\nConectando a la base de datos: {dbname}...\n")
         engine = create_engine(connection_url)
         return engine
     except Exception as e:

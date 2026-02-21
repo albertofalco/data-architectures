@@ -1,3 +1,10 @@
+"""
+Inserción de registros desde CSV de backup.
+
+Este script permite insertar registros desde un archivo CSV de backup
+a una tabla de la base de datos MySQL.
+"""
+
 import sys
 import os
 import argparse
@@ -30,6 +37,7 @@ def get_db_connection():
              sys.exit(1)
 
         connection_url = f"mysql+mysqlconnector://{user}:{password}@{host}/{dbname}"
+        print(f"Conectando a la base de datos {dbname}...")
         engine = create_engine(connection_url)
         return engine
     except Exception as e:
