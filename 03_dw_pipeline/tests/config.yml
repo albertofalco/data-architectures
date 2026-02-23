@@ -1,0 +1,28 @@
+chunk_size: 1000000
+excluded_columns:
+  - _DW_ID
+transaction_tables:
+  - name: application_train
+    file_name: application_train.csv
+    reference_column: [SK_ID_CURR]
+    excluded_first_entry: 421550
+    excluded_last_entry: 600000
+    excluded_columns: [ORGANIZATION_TYPE, ORGANIZATION_TYPE_2]
+  - name: bureau
+    file_name: bureau.csv
+    reference_column: [SK_ID_CURR, SK_ID_BUREAU]
+  - name: bureau_balance
+    file_name: bureau_balance.csv
+    reference_column: [SK_ID_BUREAU, MONTHS_BALANCE]    
+  - name: credit_card_balance
+    file_name: credit_card_balance.csv
+    reference_column: [SK_ID_PREV, SK_ID_CURR]
+  - name: installments_payments
+    file_name: installments_payments.csv
+    reference_column: [SK_ID_PREV, SK_ID_CURR]
+  - name: pos_cash_balance
+    file_name: POS_CASH_balance.csv
+    reference_column: [SK_ID_PREV, SK_ID_CURR]
+  - name: previous_application
+    file_name: previous_application.csv
+    reference_column: [SK_ID_PREV, SK_ID_CURR]

@@ -1,0 +1,21 @@
+databases:
+  staging_db: staging_mysql
+  storage_db: data_arch_dw
+
+transaction_tables:
+  option_a:
+    - name: application_train
+      group: main
+    - name: bureau
+      group: bureau
+    - name: previous_application
+      group: previous
+  option_b:
+    - name: bureau_balance
+      group: bureau
+    - name: credit_card_balance
+      group: balance
+    - name: installments_payments
+      group: payments
+    - name: pos_cash_balance
+      group: balance
