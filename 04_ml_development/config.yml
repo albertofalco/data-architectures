@@ -1,0 +1,24 @@
+# Configuración de Rutas del Proyecto
+project_name: "ml_development"
+
+paths:
+  # Datos crudos tal cual llegan
+  raw_data: "./data/raw/"
+  
+  # Datos procesados listos para entrenamiento
+  dw_data: "./data/dw_parquet/"
+  
+  # Directorio para guardar objetos de modelos (archivos .pkl, .h5, .joblib)
+  # models: "models/production/"
+  
+  # Resultados, gráficas y reportes
+  # outputs:
+  #   figures: "outputs/figures/"
+  #   reports: "outputs/reports/"
+  #   metrics: "outputs/metrics/scores.json"
+
+# Configuración de hiperparámetros (Opcional pero recomendado)
+# model_params:
+#   test_size: 0.2
+#   random_state: 42
+#   algorithm: "RandomForest"
