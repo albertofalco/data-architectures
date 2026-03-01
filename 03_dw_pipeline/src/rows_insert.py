@@ -26,6 +26,12 @@ if not ENV_PATH.exists():
 load_dotenv(ENV_PATH)
 
 def get_db_connection():
+    """
+    Establece la conexión con la base de datos MySQL.
+    
+    Returns:
+        engine: Objeto de conexión SQLAlchemy engine.
+    """
     try:
         host = os.getenv("DB_HOST")
         user = os.getenv("DB_USER")
@@ -45,6 +51,12 @@ def get_db_connection():
         sys.exit(1)
 
 def main():
+    """
+    Función principal que ejecuta la lógica de inserción de registros.
+    
+    Lee los parámetros de línea de comandos, verifica el archivo CSV y
+    la tabla en base de datos, y procede a insertar los registros.
+    """
     parser = argparse.ArgumentParser(description="Insertar registros desde CSV de backup.")
     parser.add_argument("table", help="Nombre de la tabla")
     parser.add_argument("rows", type=int, help="Número de registros a insertar")

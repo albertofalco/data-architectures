@@ -1,12 +1,21 @@
+"""
+Script de prueba de conexión a ClickHouse.
+
+Verifica que las credenciales y la conectividad con el servidor de ClickHouse
+sean correctas y lista las bases de datos disponibles.
+"""
 import clickhouse_connect
 import os
 from dotenv import load_dotenv
 
-# Load environment variables
+# Cargar variables de entorno
 load_dotenv()
 
 def test_connection():
-    # ClickHouse connection details
+    """
+    Intenta conectar a ClickHouse y listar las bases de datos.
+    """
+    # Detalles de conexión a ClickHouse
     host = os.getenv("CLICKHOUSE_HOST", "localhost")
     try:
         port = int(os.getenv("CLICKHOUSE_PORT", "8123"))

@@ -1,22 +1,30 @@
+"""
+Script de inserción de datos en tablas de reporte.
+
+Este script inserta datos en las tablas 'rep_' realizando los lookups
+necesarios contra los diccionarios para reemplazar IDs por descripciones.
+"""
 import clickhouse_connect
 import yaml
 import os
 from dotenv import load_dotenv
 
-# Load environment variables
+# Cargar variables de entorno
 load_dotenv()
 
-# ClickHouse connection details
+# Detalles de conexión a ClickHouse
 CH_HOST = os.getenv("CLICKHOUSE_HOST", "localhost")
 CH_PORT = int(os.getenv("CLICKHOUSE_PORT", "8123"))
 CH_USER = os.getenv("CLICKHOUSE_USER", "default")
 CH_PASSWORD = os.getenv("CLICKHOUSE_PASSWORD", "")
 
 def load_config():
+    """Carga la configuración desde el archivo YAML."""
     with open("03_dw_pipeline/src/config.yml", "r") as f:
         return yaml.safe_load(f)
 
 def get_table_columns(client, database, table):
+    """Obtiene la lista de columnas y tipos de una tabla."""
     query = f"DESCRIBE TABLE {database}.{table}"
     try:
         result = client.query(query)
@@ -26,16 +34,19 @@ def get_table_columns(client, database, table):
         return []
 
 def get_dictionaries(client, database):
+    """Obtiene el conjunto de diccionarios disponibles en la base de datos."""
     query = f"SHOW DICTIONARIES FROM {database}"
     result = client.query(query)
     return set([row[0] for row in result.result_rows])
 
 def get_dictionary_columns(client, database, dict_name):
+    """Obtiene la definición de columnas de un diccionario."""
     query = f"DESCRIBE {database}.{dict_name}"
     result = client.query(query)
     return [{'name': row[0], 'type': row[1]} for row in result.result_rows]
 
 def find_matching_dict(col_name, dict_names):
+    """Busca un diccionario coincidente para una columna dada."""
     if col_name.upper().endswith("_ID"):
         base = col_name[:-3].lower()
         candidate = f"dict_dim_{base}"
@@ -44,6 +55,11 @@ def find_matching_dict(col_name, dict_names):
     return None
 
 def insert_data():
+    """
+    Genera y ejecuta consultas INSERT para poblar las tablas de reporte.
+    
+    Utiliza la función dictGet de ClickHouse para obtener descripciones.
+    """
     config = load_config()
     storage_db = config["databases"]["storage_db"]
 
@@ -81,7 +97,6 @@ def insert_data():
                         desc_col = dc
                         break
                 
-                # Fallback
                 if not desc_col and len(dict_cols) > 1:
                     desc_col = dict_cols[1]
                 
@@ -93,9 +108,7 @@ def insert_data():
             else:
                 select_parts.append(col_name)
 
-        # Build and Execute Query
-        # Using INSERT INTO ... SELECT ... without column names relies on position matching
-        # which is guaranteed since we iterate source columns in order and build destination table same way.
+        # Construir y ejecutar consulta
         insert_query = f"""
         INSERT INTO {storage_db}.rep_{table_name}
         SELECT

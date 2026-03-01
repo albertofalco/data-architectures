@@ -1,50 +1,60 @@
+"""
+Script para creación de tablas de reporte (Materialized Views o Tablas Planas).
+
+Este script crea tablas 'rep_' en ClickHouse que desnormalizan los datos
+reemplazando IDs por descripciones obtenidas de diccionarios.
+"""
 import clickhouse_connect
 import yaml
 import os
 from dotenv import load_dotenv
 
-# Load environment variables
+# Cargar variables de entorno
 load_dotenv()
 
-# ClickHouse connection details
+# Detalles de conexión a ClickHouse
 CH_HOST = os.getenv("CLICKHOUSE_HOST", "localhost")
 CH_PORT = int(os.getenv("CLICKHOUSE_PORT", "8123"))
 CH_USER = os.getenv("CLICKHOUSE_USER", "default")
 CH_PASSWORD = os.getenv("CLICKHOUSE_PASSWORD", "")
 
 def load_config():
+    """Carga la configuración desde el archivo YAML."""
     with open("03_dw_pipeline/src/config.yml", "r") as f:
         return yaml.safe_load(f)
 
 def get_table_columns(client, database, table):
+    """Obtiene la lista de columnas y tipos de una tabla."""
     query = f"DESCRIBE TABLE {database}.{table}"
     try:
         result = client.query(query)
-        # name, type, default_type, default_expression, comment, codec_expression, ttl_expression
         return [{'name': row[0], 'type': row[1]} for row in result.result_rows]
     except Exception as e:
         print(f"Error getting columns for {table}: {e}")
         return []
 
 def get_dictionaries(client, database):
+    """Obtiene el conjunto de diccionarios disponibles en la base de datos."""
     query = f"SHOW DICTIONARIES FROM {database}"
     result = client.query(query)
     return set([row[0] for row in result.result_rows])
 
 def get_dictionary_columns(client, database, dict_name):
+    """Obtiene la definición de columnas de un diccionario."""
     query = f"DESCRIBE {database}.{dict_name}"
     result = client.query(query)
     return [{'name': row[0], 'type': row[1]} for row in result.result_rows]
 
 def find_matching_dict(col_name, dict_names):
-    # Heuristic: matches dict_dim_{name_without_id}
+    """Busca un diccionario coincidente para una columna dada."""
+    # Heurística: coincide con dict_dim_{nombre_sin_id}
     if col_name.upper().endswith("_ID"):
         base = col_name[:-3].lower()
         candidate = f"dict_dim_{base}"
         if candidate in dict_names:
             return candidate
         
-        # Check for numeric suffix like _2 (e.g. ORGANIZATION_TYPE_2_ID -> dict_dim_organization_type)
+        # Verificar sufijo numérico como _2 (e.g. ORGANIZATION_TYPE_2_ID -> dict_dim_organization_type)
         if len(base) > 2 and base[-2] == '_' and base[-1].isdigit():
             base_clean = base[:-2]
             candidate_clean = f"dict_dim_{base_clean}"
@@ -54,6 +64,12 @@ def find_matching_dict(col_name, dict_names):
     return None
 
 def create_dv_mv():
+    """
+    Crea las tablas de reporte ('rep_') con las columnas adecuadas.
+    
+    Reemplaza columnas de ID por columnas de texto (String) cuando encuentra
+    un diccionario coincidente.
+    """
     config = load_config()
     staging_db = config["databases"]["staging_db"]
     storage_db = config["databases"]["storage_db"]
@@ -85,28 +101,23 @@ def create_dv_mv():
             col_name = col['name']
             col_type = col['type']
             
-            # Identify Order Column (PK)
-            # For Option B, it's _DW_ID. For Option A, usually the first one (e.g. SK_ID_CURR)
+            # Identificar Columna de Orden (PK)
+            # Para la Opción B, es _DW_ID. Para la Opción A, usualmente la primera (e.g. SK_ID_CURR)
             if order_col is None:
                 order_col = col_name
 
             matching_dict = find_matching_dict(col_name, dict_names)
             
             if matching_dict:
-                # Get dictionary schema
+                # Obtener esquema del diccionario para identificar la columna de descripción
                 dict_cols = get_dictionary_columns(client, storage_db, matching_dict)
-                # Assume 2nd column is description (1st is ID)
-                # Or find the one that is NOT matching the ID type/name? 
-                # In 06_dw_config.md: dict_dim_status (STATUS_ID, STATUS)
-                # The ID column in dict usually matches the suffix of col_name (STATUS_ID)
-                # The description column is the other one.
                 
                 desc_col = None
                 for dc in dict_cols:
                     if dc['name'] != col_name and not dc['name'].endswith('_ID'):
                         desc_col = dc
                         break
-                # Fallback: just take the second column if available
+                # Si no se encuentra una columna de descripción clara, intentar con la segunda columna del diccionario
                 if not desc_col and len(dict_cols) > 1:
                     desc_col = dict_cols[1]
                 
@@ -116,23 +127,22 @@ def create_dv_mv():
                     
                     target_alias = col_name[:-3]
                     
-                    # Add dictGet
-                    # dictGet('db.dict', 'attr', key)
+                    # Si el tipo de la columna de descripción es String, usarlo directamente. Si no, convertir a String.
                     select_parts.append(f"dictGet('{storage_db}.{matching_dict}', '{desc_name}', {col_name}) AS {target_alias}")
                     dest_col_defs.append(f"{target_alias} {desc_type}")
                 else:
-                    # Dictionary found but schema unclear, keep original
+                    # No se pudo identificar una columna de descripción, mantener la original
                     select_parts.append(col_name)
                     dest_col_defs.append(f"{col_name} {col_type}")
             else:
                 select_parts.append(col_name)
                 dest_col_defs.append(f"{col_name} {col_type}")
 
-        # Construct Queries
+        # Construir queries para creación de tabla y materialized view
         rep_table = f"rep_{table_name}"
         mv_table = f"mv_{table_name}"
         
-        # Create Destination Table
+        # Crear tabla de destino.
         create_rep_sql = f"""
         CREATE TABLE IF NOT EXISTS {storage_db}.{rep_table}
         (
@@ -149,8 +159,7 @@ def create_dv_mv():
             print(f"Error creating {rep_table}: {e}")
             continue
 
-        # Create Materialized View
-        # CREATE MATERIALIZED VIEW mv TO rep AS SELECT ... FROM storage
+        # Crear vista materializada que alimenta la tabla de destino
         create_mv_sql = f"""
         CREATE MATERIALIZED VIEW IF NOT EXISTS {storage_db}.{mv_table}
         TO {storage_db}.{rep_table}

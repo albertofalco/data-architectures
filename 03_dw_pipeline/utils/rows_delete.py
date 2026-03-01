@@ -42,6 +42,12 @@ except Exception as e:
     sys.exit(1)
 
 def get_db_connection():
+    """
+    Establece la conexión con la base de datos MySQL.
+    
+    Returns:
+        engine: Objeto de conexión SQLAlchemy engine.
+    """
     try:
         host = os.getenv("DB_HOST")
         user = os.getenv("DB_USER")
@@ -61,6 +67,12 @@ def get_db_connection():
         sys.exit(1)
 
 def main():
+    """
+    Función principal que ejecuta el proceso de eliminación.
+    
+    Muestra una vista previa de los registros a eliminar y solicita confirmación
+    antes de proceder.
+    """
     engine = get_db_connection()
     
     # Verificar conexión

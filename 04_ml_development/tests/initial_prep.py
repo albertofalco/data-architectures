@@ -1,3 +1,11 @@
+"""
+Verificación Inicial de Datos (ML)
+==================================
+
+Script para comparar DataFrames de Polars entre datos crudos y datos de Data Warehouse.
+Realiza validaciones de estructura, tipos de datos y contenido.
+"""
+
 # CONFIGURACION LOCAL
 
 # IMPORTACION DE LIBRERIAS
@@ -25,6 +33,16 @@ TABLES_LIST = config.get("tables", {})
 
 # Lectura de dataframes.
 def read_dataframes(dw_file_path, raw_file_path) -> tuple[pl.DataFrame, pl.DataFrame] | None:
+    """
+    Lee los archivos de datos desde las rutas especificadas.
+
+    Args:
+        dw_file_path (pathlib.Path): Ruta al archivo parquet del Data Warehouse.
+        raw_file_path (pathlib.Path): Ruta al archivo CSV de datos crudos.
+
+    Returns:
+        tuple[pl.DataFrame, pl.DataFrame] | None: Tupla con los DataFrames (DW, Raw) o None si hay error.
+    """
     try: 
         df_dw = pl.read_parquet(dw_file_path)
         df_raw = pl.read_csv(raw_file_path)       
@@ -66,12 +84,12 @@ def apply_schema_to_matching_columns(source_df: pl.DataFrame, target_df: pl.Data
 
 def apply_preprocessing(df, name, row_slice=None, exclude_cols=None, sort_cols=None):
     """Encapsula la eliminación de columnas, ordenamiento y recorte de filas."""
-    # 1. Column Exclusion
+    # 1. Exclusión de Columnas
     if exclude_cols:
         df = df.drop(exclude_cols)
         print(f"[{name}] Columnas excluidas: {exclude_cols}")
 
-    # 2. Sorting
+    # 2. Ordenamiento
     if sort_cols:
         try:
             df = df.sort(sort_cols)
@@ -79,7 +97,7 @@ def apply_preprocessing(df, name, row_slice=None, exclude_cols=None, sort_cols=N
         except Exception as e:
             print(f"Advertencia: No se pudo ordenar {name}. Error: {e}")
             
-    # 3. Row Slicing
+    # 3. Recorte de Filas
     if row_slice:
         try:
             start, end = map(int, row_slice.split(':'))
@@ -163,6 +181,19 @@ def compare_content(df1, df2, common_cols, float_tolerance):
         print("Contenidos idénticos en columnas comunes")
 
 def compare_polars_dataframes(df1, df2, **kwargs):
+    """
+    Orquesta la comparación completa entre dos DataFrames de Polars.
+
+    Realiza preprocesamiento, chequeo de estructura, tipos, nulos y contenido.
+
+    Args:
+        df1 (pl.DataFrame): Primer DataFrame para comparar.
+        df2 (pl.DataFrame): Segundo DataFrame para comparar.
+        **kwargs: Argumentos opcionales para configuración de nombres, tolerancia, slices, etc.
+
+    Returns:
+        tuple[pl.DataFrame, pl.DataFrame]: Los DataFrames procesados.
+    """
     # Extraer parámetros con valores por defecto
     n1 = kwargs.get("df1_name", "df1")
     n2 = kwargs.get("df2_name", "df2")
@@ -192,6 +223,18 @@ def compare_polars_dataframes(df1, df2, **kwargs):
     return df1_proc, df2_proc
 
 def df_walker(tables_list, dw_data_dir, raw_data_dir, dw_pattern="*.parquet", raw_pattern="*.csv"):
+    """
+    Itera sobre la lista de tablas configuradas y ejecuta la comparación.
+
+    Busca los archivos correspondientes en los directorios dados y lanza la comparación.
+
+    Args:
+        tables_list (dict): Diccionario con la configuración de tablas.
+        dw_data_dir (pathlib.Path): Directorio de datos del Data Warehouse.
+        raw_data_dir (pathlib.Path): Directorio de datos crudos.
+        dw_pattern (str): Patrón de búsqueda para archivos DW.
+        raw_pattern (str): Patrón de búsqueda para archivos Raw.
+    """
     if type(dw_data_dir) is not pathlib.PosixPath:
         dw_data_dir = pathlib.Path(dw_data_dir)
     if type(raw_data_dir) is not pathlib.PosixPath:

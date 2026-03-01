@@ -1,18 +1,24 @@
+"""
+Script de creación de diccionarios en ClickHouse.
+
+Este script genera diccionarios en ClickHouse basados en las tablas de dimensiones
+disponibles en la base de datos de staging (MySQL).
+"""
 import clickhouse_connect
 import yaml
 import os
 from dotenv import load_dotenv
 
-# Load environment variables
+# Cargar variables de entorno
 load_dotenv()
 
-# ClickHouse connection details
+# Detalles de conexión a ClickHouse
 CH_HOST = os.getenv("CLICKHOUSE_HOST", "localhost")
 CH_PORT = int(os.getenv("CLICKHOUSE_PORT", "8123"))
 CH_USER = os.getenv("CLICKHOUSE_USER", "default")
 CH_PASSWORD = os.getenv("CLICKHOUSE_PASSWORD", "")
 
-# MySQL connection details (for Dictionary Source)
+# Detalles de conexión a MySQL (para fuente de diccionario)
 MYSQL_HOST = os.getenv("MYSQL_HOST_FOR_CH", "host.docker.internal")
 MYSQL_PORT = int(os.getenv("MYSQL_PORT", "3306"))
 MYSQL_USER = os.getenv("MYSQL_USER", "mysql-clickhouse")
@@ -20,10 +26,17 @@ MYSQL_PASSWORD = os.getenv("MYSQL_PASSWORD", "")
 MYSQL_DB = os.getenv("MYSQL_DB", "data_arch_prod")
 
 def load_config():
+    """Carga la configuración desde el archivo YAML."""
     with open("03_dw_pipeline/src/config.yml", "r") as f:
         return yaml.safe_load(f)
 
 def create_dictionaries():
+    """
+    Crea diccionarios en ClickHouse para cada tabla de dimensión encontrada.
+    
+    Consulta los metadatos de las tablas en staging y genera las sentencias
+    CREATE DICTIONARY correspondientes.
+    """
     config = load_config()
     staging_db = config["databases"]["staging_db"]
     storage_db = config["databases"]["storage_db"]
@@ -34,10 +47,10 @@ def create_dictionaries():
         print(f"Failed to connect to ClickHouse: {e}")
         return
 
-    # Fetch dim tables from staging
+    # Obtener tablas de dimensiones desde staging
     print(f"Fetching dimension tables from {staging_db}...")
     
-    # Query system.columns to get table definitions from the MySQL engine database
+    # Consultar system.columns para obtener definiciones de tablas desde la base de datos con motor MySQL
     query = f"""
     SELECT table, name, type
     FROM system.columns
@@ -67,11 +80,11 @@ def create_dictionaries():
         tables[table_name].append({'name': col_name, 'type': col_type})
 
     for table_name, columns in tables.items():
-        # First column is PK
+        # La primera columna es la PK
         pk_col = columns[0]['name']
         
-        # Build column list string
-        # Ensure type is compatible or just use what ClickHouse inferred
+        # Construir cadena de lista de columnas
+        # Asegurar que el tipo es compatible o utilizar el criterio de ClickHouse
         col_list_str = ", ".join([f"{col['name']} {col['type']}" for col in columns])
         
         dict_name = f"dict_{table_name}"

@@ -17,14 +17,17 @@ SRC_CONFIG_PATH = os.path.join(os.path.dirname(__file__), "../src/config.yml")
 DATA_RAW_PATH = os.path.join(os.path.dirname(os.path.dirname(__file__)), "..", "data", "raw")
 
 def load_config():
+    """Carga la configuración local de pruebas."""
     with open(CONFIG_PATH, "r") as f:
         return yaml.safe_load(f)
 
 def load_src_config():
+    """Carga la configuración del pipeline fuente."""
     with open(SRC_CONFIG_PATH, "r") as f:
         return yaml.safe_load(f)
 
 def get_db_client():
+    """Obtiene un cliente de conexión a ClickHouse."""
     host = os.getenv("CLICKHOUSE_HOST", "localhost")
     port = int(os.getenv("CLICKHOUSE_PORT", "8123") or 8123)
     user = os.getenv("CLICKHOUSE_USER", "default")
@@ -32,9 +35,15 @@ def get_db_client():
     return clickhouse_connect.get_client(host=host, port=port, username=user, password=password)
 
 def get_db_table_name(table_name):
+    """Retorna el nombre de la tabla de reporte correspondiente."""
     return f"rep_{table_name}"
 
 def check_table_integrity(table_info, config_data, src_config_data, db_client):
+    """
+    Verifica la integridad de los datos entre el archivo CSV fuente y la tabla en ClickHouse.
+    
+    Compara conteo de filas y existencia de tabla.
+    """
     table_name = table_info["name"]
     file_name = table_info["file_name"]
     
@@ -47,16 +56,8 @@ def check_table_integrity(table_info, config_data, src_config_data, db_client):
         raise FileNotFoundError(f"Archivo {csv_path} no encontrado")
     
     print(f"Cargando CSV: {csv_path}")
-    # df = pd.read_csv(csv_path, keep_default_na=False, na_values=["", "NA", "N/A", "null", "NULL", "NaN"])
-    df = pd.read_csv(csv_path, dtype_backend="numpy_nullable")
 
-    # Normalizar valores vacíos y NaN para comparación consistente
-    # df = df.replace("", pd.NA)
-    # df = df.replace("NA", pd.NA)
-    # df = df.replace("N/A", pd.NA)
-    # df = df.replace("null", pd.NA)
-    # df = df.replace("NULL", pd.NA)
-    # df = df.replace("NaN", pd.NA)
+    df = pd.read_csv(csv_path, dtype_backend="numpy_nullable")
     
     ref_col = table_info.get("reference_column")
     if ref_col and isinstance(ref_col, str):
@@ -127,10 +128,6 @@ def check_table_integrity(table_info, config_data, src_config_data, db_client):
         return False
     print("[SIN DIFERENCIAS] Columnas verificadas.")
     
-    # if not ref_col:
-    #     print("[INFO] No se puede verificar contenido sin reference_column")
-    #     return True
-    
     print("Verificando contenido...")
     chunk_size = config_data.get("chunk_size", 100000)
     total_rows = len(df)
@@ -179,6 +176,7 @@ def check_table_integrity(table_info, config_data, src_config_data, db_client):
         return False
 
 def check_db_connection():
+    """Verifica la conexión con ClickHouse."""
     try:
         client = get_db_client()
         client.command("SELECT 1")
@@ -187,6 +185,7 @@ def check_db_connection():
         return False, str(e)
 
 def main():
+    """Función principal de verificación de integridad."""
     print("Verificando conexión con ClickHouse...")
     
     connected, error_msg = check_db_connection()
