@@ -17,6 +17,87 @@ paths:
   #   reports: "outputs/reports/"
   #   metrics: "outputs/metrics/scores.json"
 
+# Configuración de tablas para comparación DW vs Raw
+tables:
+  application_train:
+    dw_row_slice: "0:277511"
+    raw_row_slice: "0:277511"
+    dw_exclude_col:
+      - ORGANIZATION_TYPE
+      - ORGANIZATION_TYPE_2
+    raw_exclude_col:
+      - ORGANIZATION_TYPE
+    dw_sort_col:
+      - SK_ID_CURR
+    raw_sort_col:
+      - SK_ID_CURR
+  bureau:
+    dw_sort_col:
+      - SK_ID_CURR
+      - SK_ID_BUREAU
+    raw_sort_col:
+      - SK_ID_CURR
+      - SK_ID_BUREAU
+  bureau_balance:
+    dw_exclude_col:
+      - _DW_ID
+    dw_sort_col:
+      - SK_ID_BUREAU
+      - MONTHS_BALANCE
+    raw_sort_col:
+      - SK_ID_BUREAU
+      - MONTHS_BALANCE
+  credit_card_balance:
+    dw_exclude_col:
+      - _DW_ID
+    dw_sort_col:
+      - SK_ID_PREV
+      - SK_ID_CURR
+      - MONTHS_BALANCE
+    raw_sort_col:
+      - SK_ID_PREV
+      - SK_ID_CURR
+      - MONTHS_BALANCE
+  installments_payments:
+    dw_exclude_col:
+      - _DW_ID
+    dw_sort_col:
+      - SK_ID_PREV
+      - SK_ID_CURR
+      - NUM_INSTALMENT_VERSION
+      - NUM_INSTALMENT_NUMBER
+      - DAYS_INSTALMENT
+      - DAYS_ENTRY_PAYMENT
+      - AMT_INSTALMENT
+      - AMT_PAYMENT
+    raw_sort_col:
+      - SK_ID_PREV
+      - SK_ID_CURR
+      - NUM_INSTALMENT_VERSION
+      - NUM_INSTALMENT_NUMBER
+      - DAYS_INSTALMENT
+      - DAYS_ENTRY_PAYMENT
+      - AMT_INSTALMENT
+      - AMT_PAYMENT
+  POS_CASH_balance:
+    dw_exclude_col:
+      - _DW_ID
+    dw_sort_col:
+      - SK_ID_PREV
+      - SK_ID_CURR
+      - MONTHS_BALANCE
+    raw_sort_col:
+      - SK_ID_PREV
+      - SK_ID_CURR
+      - MONTHS_BALANCE
+  previous_application:
+    dw_sort_col:
+      - SK_ID_PREV
+      - SK_ID_CURR
+    raw_sort_col:
+      - SK_ID_PREV
+      - SK_ID_CURR
+
 # Configuración de hiperparámetros (Opcional pero recomendado)
 # model_params:
 #   test_size: 0.2
