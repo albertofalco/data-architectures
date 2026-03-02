@@ -25,6 +25,7 @@ DATA_PATH = BASE_DIR / 'data' / 'db_input'
 ######################################################
 
 def main():
+    """Ejecuta el proceso principal de carga de datos a MySQL."""
     # 1. Configuración de argumentos
     parser = argparse.ArgumentParser(description="Cargador de CSV a MySQL vía SQLAlchemy")
     parser.add_argument("--host", default=os.getenv('DB_HOST', '127.0.0.1'), help="Host de la base de datos")

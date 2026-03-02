@@ -1,3 +1,3 @@
 """
-__init__.py - Initialize the src module.
+__init__.py - Inicializa el módulo fuente.
 """

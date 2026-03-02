@@ -1,3 +1,3 @@
 """
-__init__.py - Initialize the utils module.
+__init__.py - Inicializa el módulo de utilidades.
 """

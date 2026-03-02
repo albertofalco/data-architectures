@@ -19,7 +19,7 @@ load_dotenv(BASE_DIR / '.env') # Cargar variables de entorno desde .env
 ###########################################################
 
 def main():
-
+    """Ejecuta la comparación de nombres de tablas entre la BD y los CSVs."""
     # Configuración de argumentos de línea de comandos
     parser = argparse.ArgumentParser(description="Cargador de CSV a MySQL")
     parser.add_argument("--host", default=os.getenv('DB_HOST', '127.0.0.1'), help="Host de la base de datos")

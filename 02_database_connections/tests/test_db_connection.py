@@ -26,6 +26,7 @@ load_dotenv(BASE_DIR / '.env')
 # ============================================================================
 
 def mysql_connection():
+    """Establece y valida la conexión a la base de datos MySQL."""
     # Conexión a la base de datos
     try:
         conn = mysql.connector.connect(

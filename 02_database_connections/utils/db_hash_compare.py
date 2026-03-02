@@ -62,6 +62,7 @@ TABLES = ["application_train",
 ]
 
 def get_checksums(db_name: str, tables: list) -> dict:
+    """Obtiene los checksums de las tablas especificadas en una base de datos."""
     engine = create_engine(
         f"mysql+mysqlconnector://{os.getenv('DB_USER')}:{os.getenv('DB_PASSWORD')}@{os.getenv('DB_HOST')}/{db_name}"
     )
@@ -77,6 +78,7 @@ def get_checksums(db_name: str, tables: list) -> dict:
     return hashes
 
 def compare_hashes(hashes_prod: dict, hashes_test: dict):
+    """Compara los hashes de producción y test e imprime el resultado."""
     for table in TABLES:
         checksum_prod = hashes_prod.get(table)
         checksum_test = hashes_test.get(table)
@@ -87,6 +89,7 @@ def compare_hashes(hashes_prod: dict, hashes_test: dict):
             print(f"{table}: HASHES DIFERENTES - prod: {checksum_prod}, test: {checksum_test}")
 
 def main():
+    """Ejecuta el proceso de comparación de hashes entre entornos."""
     hashes_prod = get_checksums(DATABASES["prod"], TABLES)
     hashes_test = get_checksums(DATABASES["test"], TABLES)
     

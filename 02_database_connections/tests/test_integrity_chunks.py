@@ -44,6 +44,7 @@ def verify_by_hashing(csv_path, table_name, connection, chunk_size=1000000):
     print(f"--- [HASH] Verificando {table_name} ---")
     
     def get_hash_csv():
+        """Calcula el hash SHA256 del archivo CSV procesándolo por bloques."""
         sha256 = hashlib.sha256()
         i = 0
         # Leemos el CSV en pedazos de texto para el hash

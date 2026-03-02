@@ -1,3 +1,6 @@
+"""
+Punto de entrada para el módulo de conexiones a bases de datos.
+"""
 # 02.database_connections/__main__.py
 from .src import __main__ as _main_module
 

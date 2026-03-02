@@ -37,7 +37,7 @@ DATA_PATH = BASE_DIR / 'data' / 'db_input'
 # ============================================================================
 
 def control_table_names(connection, dir_path):
-
+    """Verifica que las tablas en la base de datos coincidan con los archivos CSV."""
     stmt = text("SHOW TABLES")
     result = connection.execute(stmt)
     tables = [t[0] for t in result.fetchall()]

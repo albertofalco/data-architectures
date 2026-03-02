@@ -23,6 +23,7 @@ def load_config():
     # Intentar cargar primero desde la ruta raíz del proyecto
     config_path = "03_dw_pipeline/src/config.yml"
     if not os.path.exists(config_path):
+        # Respaldo a ruta local si se ejecuta desde src
         config_path = "config.yml"
         
     with open(config_path, "r") as f:

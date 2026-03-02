@@ -1,3 +1,7 @@
+"""
+Script de pruebas para la base de datos raw.
+Valida la integridad y estructura de la base de datos cruda.
+"""
 import os
 import sys
 import json
