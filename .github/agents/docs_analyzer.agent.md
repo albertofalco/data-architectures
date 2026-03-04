@@ -2,8 +2,7 @@
 name: '@analyzer'
 description: 'Auditor de estándares Python con permisos de escritura restringidos'
 model: 'gemini-2.0-flash'
-tools: ['search', 'edit/editFiles', ]
-opencode_runtime: 'bigpickle'
+tools: ['search', 'edit/editFiles']
 ---
 
 # Rol

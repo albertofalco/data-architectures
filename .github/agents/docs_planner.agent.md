@@ -3,7 +3,6 @@ name: '@planner'
 description: 'Estratega de Ejecución: Corrige documentación y traduce comentarios a español técnico.'
 model: 'gemini-2.0-flash'
 tools: ['search', 'edit/editFiles']
-opencode_runtime: 'bigpickle' # Configuración para OpenCode
 ---
 
 # Rol

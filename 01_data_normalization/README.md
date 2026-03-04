@@ -1,28 +1,35 @@
-# Módulo 01: Data Normalization
+# Module 01: Data Normalization
 
-## Descripción General
+## General Description
 
-Este módulo realiza la normalización completa de múltiples datasets aplicando principios de diseño de bases de datos relacional (1NF, 2NF, 3NF) y resolviendo solapamientos de dimensiones compartidas entre datasets relacionados.
+This module performs complete normalization of multiple datasets applying relational database design principles (1NF, 2NF, 3NF) and resolving shared dimension overlaps between related datasets.
 
-## Funcionalidades Principales
+## Requirements
 
-### Normalización Estándar
-- Atomización de datos (Primera Forma Normal - 1NF)
-- Descomposición de tablas en dimensiones
-- Creación de tablas de referencia (lookup tables)
+- pandas
+- numpy
+- pandasql
+- pytest (optional)
 
-### Corrección de Overlaps
-Identificación y resolución de inconsistencias en las 3 tablas de dimensiones compartidas entre `application_train` y `previous_application`:
+## Main Functionalities
+
+### Standard Normalization
+- Data atomization (First Normal Form - 1NF)
+- Table decomposition into dimensions
+- Creation of reference tables (lookup tables)
+
+### Overlap Correction
+Identifies and resolves inconsistencies in the 3 shared dimension tables between `application_train` and `previous_application`:
 - `dim_name_contract_type`
 - `dim_weekday_appr_process_start`
 - `dim_name_type_suite`
 
-## Procesamiento en Fases
+## Phase Processing
 
-El script principal ejecuta tres fases secuenciales:
+The main script executes three sequential phases:
 
-### Fase 1: Normalización y optimización de diseño
-Se procesan los datasets almacenados en db_input:
+### Phase 1: Normalization and Design Optimization
+Processes datasets stored in db_input:
 - `application_train.csv`
 - `application_test.csv`
 - `bureau_balance.csv`
@@ -32,36 +39,36 @@ Se procesan los datasets almacenados en db_input:
 - `POS_CASH_balance.csv`
 - `previous_application.csv`
 
-Se realizan las siguientes transformaciones:
-- Atomización de `ORGANIZATION_TYPE`: se extrae el número de tipo en columna separada y se crea el atributo `ORGANIZATION_TYPE_2`.
-- Se optimizan los datasets reemplazando por IDs en lugar de valores categóricos. Cada atributo categórico se descompone en:
-    - Tabla Principal: Contiene solo IDs (referencias a dimensiones).
-    - Tabla de Dimensión: Mapeo de ID → Valor original.
-- Tablas de dimensiones en archivos CSV separados.
+The following transformations are performed:
+- Atomization of `ORGANIZATION_TYPE`: extracts type number into separate column and creates `ORGANIZATION_TYPE_2` attribute
+- Optimizes datasets by replacing categorical values with IDs. Each categorical attribute is decomposed into:
+  - Main Table: Contains only IDs (dimension references)
+  - Dimension Table: Mapping of ID → Original value
+- Dimension tables in separate CSV files
 
-### Fase 2: Correcciones para datasets con solapamiento de dimensiones:
-Dos datasets comparten algunas dimensiones en común:
+### Phase 2: Corrections for Datasets with Dimension Overlaps
+Two datasets share some common dimensions:
 - `application_train.csv`
 - `previous_application.csv`
 
-Dado que el mapeo realizado por pandas asigna automáticamente valores según el orden en que se suceden a lo largo de cada atributo, se aplican remapeos de IDs para alinar las dimensiones compartidas:
+Since the mapping performed by pandas automatically assigns values according to the order in which they occur along each attribute, ID remappings are applied to align shared dimensions:
 
-**Para `application_train`:**
-- `NAME_CONTRACT_TYPE_ID`: Mapeo de 2 categorías.
-- `WEEKDAY_APPR_PROCESS_START_ID`: Mapeo de 7 días (1 - MONDAY a 7 - SUNDAY).
-- `NAME_TYPE_SUITE_ID`: Mapeo de 7 tipos.
+**For `application_train`:**
+- `NAME_CONTRACT_TYPE_ID`: Mapping of 2 categories
+- `WEEKDAY_APPR_PROCESS_START_ID`: Mapping of 7 days (1 - MONDAY to 7 - SUNDAY)
+- `NAME_TYPE_SUITE_ID`: Mapping of 7 types
 
-**Para `previous_application`:**
-- `WEEKDAY_APPR_PROCESS_START_ID`: Mapeo de 7 días.
+**For `previous_application`:**
+- `WEEKDAY_APPR_PROCESS_START_ID`: Mapping of 7 days
 
-Exporta:
-- Datasets corregidos.
-- Tres tablas de dimensiones comunes conciliadas con los datasets de referencia.
+Exports:
+- Corrected datasets
+- Three common dimension tables reconciled with reference datasets
 
-### Fase 3: Limpieza
-Elimina directorios temporales de `application_train` y `previous_application` originales.
+### Phase 3: Cleanup
+Removes temporary directories from original `application_train` and `previous_application`.
 
-## Estructura de Salida
+## Module Structure
 
 ```
 data/db_input/
@@ -80,66 +87,58 @@ data/db_input/
 └── ...
 ```
 
-## Ejecución
+## Execution Instructions
 
-Ejecutar como script:
+Run as script:
 
 ```bash
 python 01_data_normalization/src/__main__.py
 ```
 
-O ejecutar como módulo:
+Or run as module:
 
 ```bash
 python -m 01_data_normalization
 ```
-## Notas Importantes
 
-1. El script espera los CSV de entrada en `../data/raw/`
-2. Los archivos de salida se guardan en `../data/db_input/`
-3. Los directorios temporales se limpian automáticamente al final.
+### Important Notes
+
+1. The script expects input CSVs in `../data/raw/`
+2. Output files are saved in `../data/db_input/`
+3. Temporary directories are automatically cleaned up at the end
 
 ## Tests
 
 ### test_content.py
 
-Script principal que verifica que los datasets normalizados mantienen la integridad de los datos comparándolos con los originales.
+Main script that verifies normalized datasets maintain data integrity by comparing them with originals.
 
-**Datasets revisados:**
+**Datasets reviewed:**
 - `application_train`
 - `bureau`
 - `previous_application`
 
-**Validaciones realizadas:**
-1. **Estructura**: Verifica que el número de filas se mantiene
-2. **Columnas**: Valida que todas las columnas esperadas estén presentes
-3. **Contenido**: Compara valores entre datasets original y normalizado
+**Validations performed:**
+1. **Structure**: Verifies row count is maintained
+2. **Columns**: Validates all expected columns are present
+3. **Content**: Compares values between original and normalized datasets
 
-### Ejecución de Tests
+### Test Execution
 
-Ejecutar directamente:
+Run directly:
 
 ```bash
 python 01_data_normalization/tests/test_content.py
 ```
 
-O bien como módulo:
+Or as module:
 
 ```bash
 python -m 01_data_normalization.tests.test_content
 ```
 
-### Notas sobre las Validaciones
+### Notes on Validations
 
-- Las columnas `ORGANIZATION_TYPE` y `ORGANIZATION_TYPE_2` se excluyen de la comparación ya que se transforman durante la normalización.
-- Se tolera una diferencia máxima de `1e-5` en valores numéricos para permitir errores de redondeo.
-- El script genera un resumen detallado de diferencias encontradas para facilitar el debugging.
-
-## Requisitos
-
-- pandas
-- numpy
-- pandasql
-- pytest (opcional)
-
-
+- Columns `ORGANIZATION_TYPE` and `ORGANIZATION_TYPE_2` are excluded from comparison as they are transformed during normalization
+- A maximum difference of `1e-5` in numeric values is tolerated to allow for rounding errors
+- The script generates a detailed summary of differences found to facilitate debugging
