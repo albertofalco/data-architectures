@@ -10,7 +10,7 @@ The module follows a star schema design pattern where:
 - **Dictionary layer**: Provides lookup mappings from IDs to descriptions
 - **Reporting layer**: Denormalized tables (rep_*) with descriptions instead of IDs, powered by materialized views
 
-## Required Libraries
+## Requirements
 
 - clickhouse-connect
 - pandas
@@ -72,84 +72,53 @@ Inserts data from staging tables into storage transactional tables, and automati
 CLICKHOUSE_HOST=localhost
 CLICKHOUSE_PORT=8123
 CLICKHOUSE_USER=default
-CLICKHOUSE_PASSWORD=
+CLICKHOUSE_PASSWORD=********
 MYSQL_HOST_FOR_CH=host.docker.internal
 MYSQL_PORT=3306
 MYSQL_USER=mysql-clickhouse
-MYSQL_PASSWORD=
+MYSQL_PASSWORD==********
 MYSQL_DB=data_arch_prod
 ```
 
 ### Execution Order
 
 1. **Create databases**:
-```bash
-python -m 03_dw_pipeline.src.dw_dbs_creator
-```
+    ```bash
+    python -m 03_dw_pipeline.src.dw_dbs_creator
+    ```
 
 2. **Create dictionaries**:
-```bash
-python -m 03_dw_pipeline.src.dw_dict_creator
-```
+    ```bash
+    python -m 03_dw_pipeline.src.dw_dict_creator
+    ```
 
 3. **Create transactional tables**:
-```bash
-python -m 03_dw_pipeline.src.dw_tran_creator
-```
+    ```bash
+    python -m 03_dw_pipeline.src.dw_tran_creator
+    ```
 
 4. **Insert data into transactional tables**:
-```bash
-python -m 03_dw_pipeline.src.dw_tran_insert
-```
+    ```bash
+    python -m 03_dw_pipeline.src.dw_tran_insert
+    ```
 
 5. **Create materialized views and report tables**:
-```bash
-python -m 03_dw_pipeline.src.dw_mv_creator
-```
-
-Or execute all steps using the main module:
-```bash
-python -m 03_dw_pipeline
-```
+    ```bash
+    python -m 03_dw_pipeline.src.dw_mv_creator
+    ```
 
 ## Tests
 
-### test_connection_dw.py
+### Test Descriptions
 
-Tests the connectivity to ClickHouse server.
-
-**Validations performed:**
-1. **Connection**: Verifies that credentials are correct and ClickHouse server is accessible
-2. **Database listing**: Lists all available databases in the server
-
-**Execution:**
-```bash
-python 03_dw_pipeline/tests/test_connection_dw.py
-```
-
-### test_raw_dw.py
-
-Verifies data integrity between CSV source files and report tables in ClickHouse.
-
-**Datasets verified:**
-- application_train
-- bureau
-- previous_application
-- bureau_balance
-- credit_card_balance
-- installments_payments
-- pos_cash_balance
-
-**Validations performed:**
-1. **Row count**: Verifies that the number of rows in CSV matches the database table
-2. **Columns**: Validates that all expected columns are present
-3. **Content**: Compares data values between CSV and database table (with tolerance of 1e-5 for numerical precision)
-4. **Filtering**: Applies filtering rules for datasets with excluded entries
-
-**Execution:**
-```bash
-python 03_dw_pipeline/tests/test_raw_dw.py
-```
+- `test_connection_dw.py`: Tests the connectivity to ClickHouse server. Validations performed:
+    - **Connection**: Verifies that credentials are correct and ClickHouse server is accessible
+    - **Database listing**: Lists all available databases in the server
+- `test_raw_dw.py`: Verifies data integrity between CSV source files and report tables in ClickHouse. Validations performed:
+    - **Row count**: Verifies that the number of rows in CSV matches the database table
+    - **Columns**: Validates that all expected columns are present
+    - **Content**: Compares data values between CSV and database table (with tolerance of 1e-5 for numerical precision)
+    - **Filtering**: Applies filtering rules for datasets with excluded entries
 
 ### Notes on Validations
 - Columns can be excluded from comparison via configuration

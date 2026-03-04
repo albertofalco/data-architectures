@@ -11,93 +11,75 @@ This module performs complete normalization of multiple datasets applying relati
 - pandasql
 - pytest (optional)
 
-## Main Functionalities
+## Main Features
 
-### Standard Normalization
-- Data atomization (First Normal Form - 1NF)
-- Table decomposition into dimensions
-- Creation of reference tables (lookup tables)
+### Features of the normalization process
 
-### Overlap Correction
-Identifies and resolves inconsistencies in the 3 shared dimension tables between `application_train` and `previous_application`:
-- `dim_name_contract_type`
-- `dim_weekday_appr_process_start`
-- `dim_name_type_suite`
+- Normalization of datasets to eliminate redundancy and improve data integrity
+- Creation of reference tables for categorical attributes
+- Correction of overlapping shared dimension between several datasets (e.g. `dim_name_contract_type`, `dim_weekday_appr_process_start`, `dim_name_type_suite`).
 
-## Phase Processing
+### Sequential phases
 
-The main script executes three sequential phases:
-
-### Phase 1: Normalization and Design Optimization
-Processes datasets stored in db_input:
-- `application_train.csv`
-- `application_test.csv`
-- `bureau_balance.csv`
-- `bureau.csv`
-- `credit_card_balance.csv`
-- `installments_payments.csv`
-- `POS_CASH_balance.csv`
-- `previous_application.csv`
-
-The following transformations are performed:
-- Atomization of `ORGANIZATION_TYPE`: extracts type number into separate column and creates `ORGANIZATION_TYPE_2` attribute
-- Optimizes datasets by replacing categorical values with IDs. Each categorical attribute is decomposed into:
-  - Main Table: Contains only IDs (dimension references)
-  - Dimension Table: Mapping of ID → Original value
-- Dimension tables in separate CSV files
-
-### Phase 2: Corrections for Datasets with Dimension Overlaps
-Two datasets share some common dimensions:
-- `application_train.csv`
-- `previous_application.csv`
-
-Since the mapping performed by pandas automatically assigns values according to the order in which they occur along each attribute, ID remappings are applied to align shared dimensions:
-
-**For `application_train`:**
-- `NAME_CONTRACT_TYPE_ID`: Mapping of 2 categories
-- `WEEKDAY_APPR_PROCESS_START_ID`: Mapping of 7 days (1 - MONDAY to 7 - SUNDAY)
-- `NAME_TYPE_SUITE_ID`: Mapping of 7 types
-
-**For `previous_application`:**
-- `WEEKDAY_APPR_PROCESS_START_ID`: Mapping of 7 days
-
-Exports:
-- Corrected datasets
-- Three common dimension tables reconciled with reference datasets
-
-### Phase 3: Cleanup
-Removes temporary directories from original `application_train` and `previous_application`.
+- **Phase 1: Normalization of Individual Datasets**
+  - Processes datasets stored in /data/raw (`application_train`, `application_test`, `bureau_balance`, `bureau`, `credit_card_balance`, `installments_payments`, `POS_CASH_balance`, `previous_application`)
+  - Resolves the atomization of `ORGANIZATION_TYPE`: extracts type number into separate column and creates `ORGANIZATION_TYPE_2` attribute
+  - Optimizes datasets by replacing categorical values with IDs
+  - Dimension tables in separate CSV files
+- **Phase 2: Corrections for Datasets with Dimension Overlaps**
+  - Since the mapping performed by pandas automatically assigns values according to the order in which they occur along each attribute, ID remappings are applied to align shared dimensions (e.g. `NAME_CONTRACT_TYPE`, `WEEKDAY_APPR_PROCESS_START`, `NAME_TYPE_SUITE`) across datasets to ensure consistency.
+- **Phase 3: Cleanup**
+  - Removes temporary directories and redundant files.
 
 ## Module Structure
 
+### Module directory structure
+
 ```
-data/db_input/
-├── application_test/
-│   ├── application_test.csv
-│   ├── dim_*.csv
+01_data_normalization/
+├── notebooks/
 │   └── ...
-├── bureau/
-│   ├── bureau.csv
-│   ├── dim_*.csv
+├── src/
+│   ├── __main__.py
 │   └── ...
-├── common_dims/
-│   ├── dim_name_contract_type.csv
-│   ├── dim_weekday_appr_process_start.csv
-│   └── dim_name_type_suite.csv
+├── tests/
+│   ├── test_content.py
+│   ├── test_data_types.py
+│   ├── test_head_csv.py
+│   ├── test_structure.py
+│   └── ...
+└── utils/
+    ├── common_dims_mapper.py
+    ├── mappings.json
+    ├── schema_report.csv
+    ├── schema_report.py
+    └── ...
+```
+
+### Expected input and output directory structure
+
+```
+data/
+├── raw/
+│   ├── application_train.csv
+│   └── ...
+├── db_input/
+│   ├── application_train/
+│   │   └── ...
+│   ├── common_dims/
+│   │   └── ...
+│   └── ...
 └── ...
 ```
 
 ## Execution Instructions
 
-Run as script:
+### Options to run the main script
 
 ```bash
+# Run directly.
 python 01_data_normalization/src/__main__.py
-```
-
-Or run as module:
-
-```bash
+# Or as a module.
 python -m 01_data_normalization
 ```
 
@@ -109,33 +91,12 @@ python -m 01_data_normalization
 
 ## Tests
 
-### test_content.py
+### Overview of tests
 
-Main script that verifies normalized datasets maintain data integrity by comparing them with originals.
-
-**Datasets reviewed:**
-- `application_train`
-- `bureau`
-- `previous_application`
-
-**Validations performed:**
-1. **Structure**: Verifies row count is maintained
-2. **Columns**: Validates all expected columns are present
-3. **Content**: Compares values between original and normalized datasets
-
-### Test Execution
-
-Run directly:
-
-```bash
-python 01_data_normalization/tests/test_content.py
-```
-
-Or as module:
-
-```bash
-python -m 01_data_normalization.tests.test_content
-```
+- `test_content.py`: Main script that verifies normalized datasets maintain data integrity by comparing them with originals. Validations performed include structure, columns, and content.
+- `test_data_types.py`: Ensures data types of columns are consistent between original and normalized datasets.
+- `test_head_csv.py`: Checks that the first few rows of normalized datasets match the original datasets to confirm correct transformations.
+- `test_structure.py`: Validates that the normalized datasets adhere to the expected structure (e.g. correct number of columns, presence of reference tables).
 
 ### Notes on Validations
 

@@ -10,12 +10,11 @@ Data Architectures for Risk Management and Audit
 
 **Main script:** [`src/__main__.py`](01_data_normalization/src/__main__.py)
 
-**Main functionalities:**
-- Standard Normalization: Data atomization (First Normal Form - 1NF), table decomposition into dimensions, and creation of reference/lookup tables
-- Overlap Correction: Identifies and resolves inconsistencies in 3 shared dimension tables between `application_train` and `previous_application` (dim_name_contract_type, dim_weekday_appr_process_start, dim_name_type_suite)
-- Phase Processing: Three sequential phases (1. Normalization and design optimization, 2. Corrections for dimension overlaps, 3. Cleanup of temporary directories)
-- Atomization of ORGANIZATION_TYPE with creation of ORGANIZATION_TYPE_2 attribute
-- Export of normalized datasets and dimension tables as CSV files
+**Main features:**
+- Standard Normalization: Data atomization (1NF) (e.g. atomization of ORGANIZATION_TYPE with creation of ORGANIZATION_TYPE_2 attribute)
+- Design Optimization: Table decomposition into dimensions, and creation of reference/lookup tables
+- Overlap Correction: Identifies and resolves inconsistencies in shared dimension tables (e.g. dim_name_contract_type, dim_weekday_appr_process_start)
+- Output: Export of normalized datasets and dimension tables as CSV files
 
 **Tests:**
 - `test_content.py`: Validates content integrity by comparing normalized datasets with originals, verifying structure (shape), columns, and values for datasets like `application_train`, `bureau`, and `previous_application`
@@ -28,7 +27,7 @@ Data Architectures for Risk Management and Audit
 
 **Main script:** [`src/__main__.py`](02_database_connections/src/__main__.py)
 
-**Main functionalities:**
+**Main features:**
 - CSV to MySQL loading using SQLAlchemy and Pandas
 - Connection to MySQL server via arguments or environment variables
 - Automatic database creation if not exists
@@ -56,10 +55,10 @@ Data Architectures for Risk Management and Audit
 - [`dw_mv_creator.py`](03_dw_pipeline/src/dw_mv_creator.py): Creates report tables and materialized views
 - [`dw_mv_insert.py`](03_dw_pipeline/src/dw_mv_insert.py): Inserts data into report tables
 
-**Main functionalities:**
-- Database creation: Staging database uses MySQL engine for direct connection to source; storage database uses standard ClickHouse
+**Main features:**
+- Database creation: Staging database uses MySQL engine for direct connection to source; storage database uses standard ClickHouse engine
 - Dictionary creation: Creates ClickHouse dictionaries from dimension tables for fast lookups
-- Transactional table creation: Two options - Option A (tables with defined PK from SK_ID columns) and Option B (tables without PK, adds _DW_ID column)
+- Transactional table creation: Two options - Option A (tables with defined PK from SK_ID columns) and Option B (tables without PK, adds _DW_ID column for sorting)
 - Report table creation: Denormalized tables (rep_*) that replace IDs with descriptions using ClickHouse dictionaries, powered by materialized views (mv_*)
 
 **Tests:**
@@ -70,16 +69,11 @@ Data Architectures for Risk Management and Audit
 
 ### 04_ml_development
 
-**Description:** Machine Learning development module (in development). Currently provides data validation utilities to compare raw CSV data with Data Warehouse parquet files.
+**Description:** Machine Learning development module (in development).
 
-**Main script:** [`tests/initial_prep.py`](04_ml_development/tests/initial_prep.py)
+**Main script:** 
 
-**Main functionalities:**
-- Data comparison between raw CSV files and Data Warehouse parquet files using Polars
-- Structure validation (shape, columns)
-- Data type validation
-- Content comparison with configurable float tolerance
-- Export of differences to CSV files
+**Main features:**
 
 **Tests:**
 - `initial_prep.py`: Compares Polars DataFrames and exports differences to CSV files for analysis
