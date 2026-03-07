@@ -149,13 +149,22 @@ The module includes three test suites to validate different aspects of data conn
 - `test_db_connection.py`: Verifies database connectivity using two different methods:
    - `mysql-connector-python`: Native MySQL connection
    - `SQLAlchemy`: ORM with MySQL driver
-- `test_table_names.py`: Validates synchronization between available CSV files and existing tables in the MySQL database:
-   - Verifies that all CSVs have corresponding tables
-   - Detects CSV files that have not been loaded yet
-   - Finds orphan tables (without source CSV file)
-   - Data quality audit
+- `test_int_size.py`: Evaluates if the columns in the .csv files require BigInteger:
+   - Analyses every .csv file in input directory
+   - Verifies if any numeric column contain values that exceed the range of a 32-bit integer
+   - Identified columns report as candidates for using BigInteger in the database
 - `test_integrity.py`: Table content control by verifying integrity against source files:
    - Table name validation: Compares DB tables vs CSV files
    - Structure (shape) validation: Verifies that rows and columns match
    - Schema validation: Checks column names and order
    - Content comparison: Cell-by-cell validation with decimal tolerance
+- `test_integrity_chunks.py`: Table content control by verifying integrity throrough chunks:
+   - Allows using HASH identification
+   - Allows using pandas assert by chunks
+- `test_raw_db.py`: Validates the integrity and structure of the raw database:
+   - Allows using chunks for comparing content.
+- `test_table_names.py`: Validates synchronization between available CSV files and existing tables in the MySQL database:
+   - Verifies that all CSVs have corresponding tables
+   - Detects CSV files that have not been loaded yet
+   - Finds orphan tables (without source CSV file)
+   - Data quality audit

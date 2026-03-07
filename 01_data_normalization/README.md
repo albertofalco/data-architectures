@@ -10,6 +10,11 @@ This module performs complete normalization of multiple datasets applying relati
 - numpy
 - pandasql
 - pytest (optional)
+- ipykernel
+- ipython
+- jupyter_client
+- jupyter_core
+- ipython_pygments_lexers
 
 ## Main Features
 

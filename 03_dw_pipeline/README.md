@@ -16,6 +16,7 @@ The module follows a star schema design pattern where:
 - pandas
 - pyyaml
 - python-dotenv
+- pytest
 
 ## Main Functionalities
 
