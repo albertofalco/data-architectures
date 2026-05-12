@@ -1,99 +1,221 @@
 """
-Script para comparar checksums de tablas entre bases de datos MySQL.
+Compara checksums de tablas entre dos bases MySQL.
 
-Compara los hashes de tablas específicas entre las bases de datos de producción
-y test, ejecutando la consulta CHECKSUM TABLE directamente en el servidor MySQL.
+Por defecto compara todas las tablas base comunes entre data_arch_prod y
+data_arch_test. Tambien informa tablas faltantes en cada base.
 """
 
+import argparse
 import os
+import re
+import sys
+from dataclasses import dataclass
 from pathlib import Path
+
 from dotenv import load_dotenv
 from sqlalchemy import create_engine, text
+from sqlalchemy.engine import URL, Engine
+from sqlalchemy.exc import SQLAlchemyError
+
 
 BASE_DIR = Path(__file__).resolve().parent.parent.parent
-load_dotenv(BASE_DIR / '.env')
+load_dotenv(BASE_DIR / ".env")
 
-DATABASES = {
-    "prod": "data_arch_prod",
-    "test": "data_arch_test"
-}
+DEFAULT_PROD_DB = "data_arch_prod"
+DEFAULT_TEST_DB = "data_arch_test"
+IDENTIFIER_RE = re.compile(r"^[A-Za-z0-9_$]+$")
 
-TABLES = ["application_train", 
-          "bureau", 
-          "bureau_balance", 
-          "credit_card_balance", 
-          "dim_channel_type", 
-          "dim_code_gender", 
-          "dim_code_reject_reason", 
-          "dim_credit_active", 
-          "dim_credit_currency", 
-          "dim_credit_type", 
-          "dim_emergencystate_mode", 
-          "dim_flag_last_appl_per_contract", 
-          "dim_flag_own_car", 
-          "dim_flag_own_realty", 
-          "dim_fondkapremont_mode", 
-          "dim_housetype_mode", 
-          "dim_name_cash_loan_purpose", 
-          "dim_name_client_type", 
-          "dim_name_contract_status", 
-          "dim_name_contract_type", 
-          "dim_name_education_type", 
-          "dim_name_family_status", 
-          "dim_name_goods_category", 
-          "dim_name_housing_type", 
-          "dim_name_income_type", 
-          "dim_name_payment_type", 
-          "dim_name_portfolio", 
-          "dim_name_product_type", 
-          "dim_name_seller_industry", 
-          "dim_name_type_suite", 
-          "dim_name_yield_group", 
-          "dim_occupation_type", 
-          "dim_organization_type", 
-          "dim_organization_type_2", 
-          "dim_product_combination", 
-          "dim_status", 
-          "dim_wallsmaterial_mode", 
-          "dim_weekday_appr_process_start", 
-          "installments_payments", 
-          "pos_cash_balance", 
-          "previous_application"
-]
 
-def get_checksums(db_name: str, tables: list) -> dict:
-    """Obtiene los checksums de las tablas especificadas en una base de datos."""
-    engine = create_engine(
-        f"mysql+mysqlconnector://{os.getenv('DB_USER')}:{os.getenv('DB_PASSWORD')}@{os.getenv('DB_HOST')}/{db_name}"
+@dataclass
+class ChecksumResult:
+    equal: dict[str, tuple[int | None, int | None]]
+    different: dict[str, tuple[int | None, int | None]]
+    errors: dict[str, str]
+    only_in_prod: set[str]
+    only_in_test: set[str]
+
+
+def parse_args() -> argparse.Namespace:
+    parser = argparse.ArgumentParser(
+        description="Compara CHECKSUM TABLE entre dos bases MySQL."
     )
-    
-    hashes = {}
+    parser.add_argument(
+        "--prod-db",
+        default=DEFAULT_PROD_DB,
+        help=f"Base de datos origen/prod. Default: {DEFAULT_PROD_DB}",
+    )
+    parser.add_argument(
+        "--test-db",
+        default=DEFAULT_TEST_DB,
+        help=f"Base de datos destino/test. Default: {DEFAULT_TEST_DB}",
+    )
+    return parser.parse_args()
+
+
+def require_env(name: str) -> str:
+    value = os.getenv(name)
+    if value is None:
+        raise RuntimeError(f"Falta la variable de entorno requerida: {name}")
+    return value
+
+
+def create_mysql_engine() -> Engine:
+    host = require_env("DB_HOST")
+    port = require_env("DB_PORT")
+    user = require_env("DB_USER")
+    password = require_env("DB_PASSWORD")
+
+    try:
+        port_number = int(port)
+    except ValueError as exc:
+        raise RuntimeError("DB_PORT debe ser un numero entero.") from exc
+
+    url = URL.create(
+        "mysql+mysqlconnector",
+        username=user,
+        password=password,
+        host=host,
+        port=port_number,
+    )
+    return create_engine(url)
+
+
+def quote_identifier(identifier: str) -> str:
+    if not IDENTIFIER_RE.fullmatch(identifier):
+        raise ValueError(f"Identificador MySQL no soportado: {identifier!r}")
+    return f"`{identifier}`"
+
+
+def get_tables(engine: Engine, db_name: str) -> set[str]:
+    query = text(
+        """
+        SELECT table_name
+        FROM information_schema.tables
+        WHERE table_schema = :db_name
+          AND table_type = 'BASE TABLE'
+        ORDER BY table_name
+        """
+    )
+
     with engine.connect() as conn:
-        for table in tables:
-            stmt = text(f"CHECKSUM TABLE {table}")
-            result = conn.execute(stmt).fetchone()
-            checksum = result[1]
-            hashes[table] = checksum
-    
-    return hashes
+        return {row[0] for row in conn.execute(query, {"db_name": db_name})}
 
-def compare_hashes(hashes_prod: dict, hashes_test: dict):
-    """Compara los hashes de producción y test e imprime el resultado."""
-    for table in TABLES:
-        checksum_prod = hashes_prod.get(table)
-        checksum_test = hashes_test.get(table)
-        
-        if checksum_prod == checksum_test:
-            print(f"{table}: HASHES IGUALES - prod: {checksum_prod}, test: {checksum_test}")
+
+def get_checksum(engine: Engine, db_name: str, table_name: str) -> int | None:
+    qualified_table = (
+        f"{quote_identifier(db_name)}.{quote_identifier(table_name)}"
+    )
+    query = text(f"CHECKSUM TABLE {qualified_table}")
+
+    with engine.connect() as conn:
+        result = conn.execute(query).fetchone()
+
+    if result is None:
+        raise RuntimeError("CHECKSUM TABLE no devolvio resultados.")
+
+    return result[1]
+
+
+def compare_databases(engine: Engine, prod_db: str, test_db: str) -> ChecksumResult:
+    print(f"Obteniendo tablas de {prod_db}...")
+    prod_tables = get_tables(engine, prod_db)
+    print(f"Obteniendo tablas de {test_db}...")
+    test_tables = get_tables(engine, test_db)
+
+    only_in_prod = prod_tables - test_tables
+    only_in_test = test_tables - prod_tables
+    common_tables = sorted(prod_tables & test_tables)
+    
+    total_common = len(common_tables)
+    print(f"Se encontraron {total_common} tablas comunes para comparar.")
+
+    equal: dict[str, tuple[int | None, int | None]] = {}
+    different: dict[str, tuple[int | None, int | None]] = {}
+    errors: dict[str, str] = {}
+
+    for i, table_name in enumerate(common_tables, start=1):
+        print(f"Procesando tabla {table_name} ({i}/{total_common})...")
+        try:
+            prod_checksum = get_checksum(engine, prod_db, table_name)
+            test_checksum = get_checksum(engine, test_db, table_name)
+        except (SQLAlchemyError, RuntimeError, ValueError) as exc:
+            errors[table_name] = str(exc)
+            continue
+
+        checksums = (prod_checksum, test_checksum)
+        if prod_checksum == test_checksum:
+            equal[table_name] = checksums
         else:
-            print(f"{table}: HASHES DIFERENTES - prod: {checksum_prod}, test: {checksum_test}")
+            different[table_name] = checksums
 
-def main():
-    """Ejecuta el proceso de comparación de hashes entre entornos."""
-    hashes_prod = get_checksums(DATABASES["prod"], TABLES)
-    hashes_test = get_checksums(DATABASES["test"], TABLES)
-    
-    compare_hashes(hashes_prod, hashes_test)
+    return ChecksumResult(
+        equal=equal,
+        different=different,
+        errors=errors,
+        only_in_prod=only_in_prod,
+        only_in_test=only_in_test,
+    )
 
-if __name__ == '__main__':
-    main()
+
+def print_report(result: ChecksumResult, prod_db: str, test_db: str) -> None:
+    compared = len(result.equal) + len(result.different)
+
+    print(f"Comparacion de checksums: {prod_db} vs {test_db}")
+    print(f"Tablas comparadas: {compared}")
+    print(f"Iguales: {len(result.equal)}")
+    print(f"Diferentes: {len(result.different)}")
+    print(f"Solo en {prod_db}: {len(result.only_in_prod)}")
+    print(f"Solo en {test_db}: {len(result.only_in_test)}")
+    print(f"Errores: {len(result.errors)}")
+
+    if result.different:
+        print("\nHASHES DIFERENTES")
+        for table_name, (prod_checksum, test_checksum) in sorted(
+            result.different.items()
+        ):
+            print(
+                f"- {table_name}: {prod_db}={prod_checksum}, "
+                f"{test_db}={test_checksum}"
+            )
+
+    if result.only_in_prod:
+        print(f"\nTABLAS SOLO EN {prod_db}")
+        for table_name in sorted(result.only_in_prod):
+            print(f"- {table_name}")
+
+    if result.only_in_test:
+        print(f"\nTABLAS SOLO EN {test_db}")
+        for table_name in sorted(result.only_in_test):
+            print(f"- {table_name}")
+
+    if result.errors:
+        print("\nERRORES")
+        for table_name, error in sorted(result.errors.items()):
+            print(f"- {table_name}: {error}")
+
+
+def has_failures(result: ChecksumResult) -> bool:
+    return bool(
+        result.different
+        or result.only_in_prod
+        or result.only_in_test
+        or result.errors
+    )
+
+
+def main() -> int:
+    args = parse_args()
+
+    try:
+        engine = create_mysql_engine()
+        result = compare_databases(engine, args.prod_db, args.test_db)
+    except (RuntimeError, SQLAlchemyError) as exc:
+        print(f"ERROR: {exc}", file=sys.stderr)
+        return 2
+
+    print_report(result, args.prod_db, args.test_db)
+    return 1 if has_failures(result) else 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())
