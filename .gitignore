@@ -77,13 +77,18 @@ db.sqlite3-journal
 # ==========================================
 # 6. DATOS Y ARCHIVOS DE USUARIO
 # ==========================================
+!README.md
+AGENTS.md
 *.zip
 *_bak*
+/bak
 /data
 /docs
-!README.md
-opencode.json
 /03_dw_pipeline/assets
+.agents
+.opencode
+opencode.json
+skills-lock.json
 
 # ==========================================
 # 7. FRAMEWORKS Y HERRAMIENTAS ESPECÍFICAS
