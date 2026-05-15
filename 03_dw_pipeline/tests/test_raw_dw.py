@@ -4,13 +4,18 @@ Compara estructura (columnas) y contenido (datos) de tablas raw con sus fuentes 
 """
 
 import pandas as pd
+import numpy as np
 import yaml
 import os
 import sys
+import argparse
+import hashlib
 import clickhouse_connect
 from dotenv import load_dotenv
 
 load_dotenv()
+
+pd.set_option("future.no_silent_downcasting", True)
 
 CONFIG_PATH = os.path.join(os.path.dirname(__file__), "config.yml")
 SRC_CONFIG_PATH = os.path.join(os.path.dirname(__file__), "../src/config.yml")
@@ -38,7 +43,89 @@ def get_db_table_name(table_name):
     """Retorna el nombre de la tabla de reporte correspondiente."""
     return f"rep_{table_name}"
 
-def check_table_integrity(table_info, config_data, src_config_data, db_client):
+def quote_identifier(identifier):
+    """Escapa un identificador para ClickHouse."""
+    return f"`{identifier}`"
+
+def build_order_by_clause(columns):
+    """Construye un ORDER BY determinista y consistente con pandas."""
+    if not columns:
+        return ""
+    order_cols = [f"{quote_identifier(col)} ASC NULLS FIRST" for col in columns]
+    return f"ORDER BY {', '.join(order_cols)}"
+
+def normalize_null_values(df):
+    """Normaliza representaciones habituales de nulos antes de comparar."""
+    df = df.replace({None: pd.NA})
+    null_tokens = {"", "NA", "N/A", "NULL", "NAN"}
+    for col in df.columns:
+        df[col] = df[col].apply(
+            lambda x: pd.NA
+            if pd.isna(x) or x is None or (isinstance(x, str) and x.strip().upper() in null_tokens)
+            else x
+        )
+    return df
+
+def normalize_for_hash(df):
+    """Normaliza tipos y valores para generar hashes estables entre CSV y ClickHouse."""
+    df = normalize_null_values(df.copy())
+    try:
+        df = df.convert_dtypes(dtype_backend="numpy_nullable")
+    except Exception:
+        df = df.convert_dtypes()
+
+    for col in df.select_dtypes(include=["Float64", "float64"]).columns:
+        df[col] = df[col].round(4)
+        try:
+            non_null = df[col].dropna()
+            if len(non_null) > 0 and np.all(np.mod(non_null, 1) == 0):
+                df[col] = df[col].astype("Int64")
+        except Exception:
+            pass
+    return df
+
+def compute_chunk_hash_cumulative(df, hasher):
+    """Actualiza un hash acumulativo con el contenido normalizado del DataFrame."""
+    df = normalize_for_hash(df)
+    for col in df.columns:
+        col_data = df[col].astype(object).fillna("NULL").to_numpy(dtype=str).tobytes()
+        hasher.update(col_data)
+    return hasher
+
+def hash_dataframe_by_chunks(df, chunk_size):
+    """Calcula el hash de un DataFrame ya ordenado."""
+    sha256 = hashlib.sha256()
+    for pos in range(0, len(df), chunk_size):
+        chunk = df.iloc[pos : pos + chunk_size].copy()
+        sha256 = compute_chunk_hash_cumulative(chunk, sha256)
+        print(f"  Procesado hash csv: {pos + len(chunk)} registros...", end="\r")
+    print()
+    return sha256.hexdigest()
+
+def hash_clickhouse_query_by_chunks(db_client, db_name, db_table, compare_cols, order_by_str, total_rows, chunk_size):
+    """Calcula el hash de una tabla ClickHouse paginada con orden determinista."""
+    sha256 = hashlib.sha256()
+    cols_str = ", ".join(quote_identifier(col) for col in compare_cols)
+
+    for offset in range(0, total_rows, chunk_size):
+        query = f"""
+        SELECT {cols_str}
+        FROM {db_name}.{db_table}
+        {order_by_str}
+        LIMIT {chunk_size} OFFSET {offset}
+        """
+        try:
+            result = db_client.query(query)
+            db_chunk_df = pd.DataFrame(result.result_rows, columns=compare_cols)
+        except Exception as e:
+            raise RuntimeError(f"Error al consultar datos de la tabla: {e}")
+
+        sha256 = compute_chunk_hash_cumulative(db_chunk_df, sha256)
+        print(f"  Procesado hash db: {offset + len(db_chunk_df)} registros...", end="\r")
+    print()
+    return sha256.hexdigest()
+
+def check_table_integrity(table_info, config_data, src_config_data, db_client, method="hashing", schema_only=False):
     """
     Verifica la integridad de los datos entre el archivo CSV fuente y la tabla en ClickHouse.
     
@@ -83,10 +170,6 @@ def check_table_integrity(table_info, config_data, src_config_data, db_client):
             print(f"Excluyendo registros donde {filter_col} está entre {start} y {end}")
             df = df[~((df[filter_col] >= start) & (df[filter_col] <= end))]
     
-    if ref_col:
-        print(f"Ordenando por {ref_col}")
-        df = df.sort_values(by=ref_col).reset_index(drop=True)
-    
     db_name = src_config_data["databases"]["storage_db"]
     db_table = get_db_table_name(table_name)
     
@@ -127,17 +210,43 @@ def check_table_integrity(table_info, config_data, src_config_data, db_client):
         print(f"[DIFERENCIA] Las columnas no coinciden.\nCSV: {sorted(csv_cols)}\nDB: {sorted(db_cols)}")
         return False
     print("[SIN DIFERENCIAS] Columnas verificadas.")
+
+    if schema_only:
+        print(f"[SIN DIFERENCIAS] Esquema verificado para {table_name}.")
+        return True
     
     print("Verificando contenido...")
     chunk_size = config_data.get("chunk_size", 100000)
     total_rows = len(df)
     
     compare_cols = sorted(csv_cols)
-    cols_str = ", ".join(compare_cols)
+    cols_str = ", ".join(quote_identifier(col) for col in compare_cols)
     
     df = df[compare_cols]
+    print(f"Ordenando por todas las columnas comparables ({len(compare_cols)} columnas)")
+    df = df.sort_values(by=compare_cols, na_position="first").reset_index(drop=True)
     
-    order_by_str = f"ORDER BY {', '.join(ref_col)}" if ref_col else ""
+    order_by_str = build_order_by_clause(compare_cols)
+
+    if method == "hashing":
+        print(f"--- [HASH] Verificando {table_name} ---")
+        hash_csv = hash_dataframe_by_chunks(df, chunk_size)
+        hash_db = hash_clickhouse_query_by_chunks(
+            db_client,
+            db_name,
+            db_table,
+            compare_cols,
+            order_by_str,
+            total_rows,
+            chunk_size,
+        )
+
+        if hash_csv == hash_db:
+            print(f"[SIN DIFERENCIAS] Hash coincide para {table_name}: {hash_csv}")
+            return True
+
+        print(f"[DIFERENCIA] Hash NO coincide para {table_name}. CSV={hash_csv}, DB={hash_db}")
+        return False
     
     all_chunks_pass = True
     for i in range(0, total_rows, chunk_size):
@@ -155,10 +264,7 @@ def check_table_integrity(table_info, config_data, src_config_data, db_client):
             result = db_client.query(query)
             db_chunk_df = pd.DataFrame(result.result_rows, columns=compare_cols)
             
-            # Normalizar valores None/NaN de la base de datos
-            db_chunk_df = db_chunk_df.replace({None: pd.NA})
-            for col in db_chunk_df.columns:
-                db_chunk_df[col] = db_chunk_df[col].apply(lambda x: pd.NA if pd.isna(x) or x is None or x == "" or str(x).upper() in ["NA", "N/A", "NULL", "NAN"] else x)
+            db_chunk_df = normalize_null_values(db_chunk_df)
         except Exception as e:
             raise RuntimeError(f"Error al consultar datos de la tabla: {e}")
         
@@ -184,8 +290,35 @@ def check_db_connection():
     except Exception as e:
         return False, str(e)
 
+def parse_args():
+    """Parsea argumentos de línea de comandos."""
+    parser = argparse.ArgumentParser(
+        description="Verifica integridad de tablas ClickHouse rep_* contra archivos CSV raw."
+    )
+    parser.add_argument(
+        "--table",
+        type=str,
+        default=None,
+        help="Nombre de una tabla específica a verificar (sin --table se procesan todas).",
+    )
+    parser.add_argument(
+        "--method",
+        type=str,
+        choices=["hashing", "pandas"],
+        default="hashing",
+        help="Método de verificación de contenido: 'hashing' (por defecto) o 'pandas'.",
+    )
+    parser.add_argument(
+        "--schema-only",
+        action="store_true",
+        help="Realiza solo verificación de existencia, filas y columnas sin revisar contenido.",
+    )
+    return parser.parse_args()
+
 def main():
     """Función principal de verificación de integridad."""
+    args = parse_args()
+
     print("Verificando conexión con ClickHouse...")
     
     connected, error_msg = check_db_connection()
@@ -202,12 +335,33 @@ def main():
         db_client = get_db_client()
         
         transaction_tables = config_data["transaction_tables"]
+
+        if args.table:
+            matching_tables = [
+                table_info
+                for table_info in transaction_tables
+                if table_info["name"].lower() == args.table.lower()
+            ]
+            if not matching_tables:
+                print(f"\n[ERROR] La tabla '{args.table}' no existe en {CONFIG_PATH}.")
+                available_tables = sorted(table_info["name"] for table_info in transaction_tables)
+                print(f"Tablas disponibles: {available_tables}")
+                sys.exit(1)
+            transaction_tables = matching_tables
+            print(f"Solo se validará la tabla: {transaction_tables[0]['name']}")
         
         print(f"Iniciando verificación de integridad para {len(transaction_tables)} tablas...")
         
         results = {}
         for table_info in transaction_tables:
-            success = check_table_integrity(table_info, config_data, src_config_data, db_client)
+            success = check_table_integrity(
+                table_info,
+                config_data,
+                src_config_data,
+                db_client,
+                method=args.method,
+                schema_only=args.schema_only,
+            )
             results[table_info["name"]] = "PASS" if success else "FAIL"
             
         print("\n" + "="*40)

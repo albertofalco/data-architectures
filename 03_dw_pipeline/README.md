@@ -108,6 +108,11 @@ MYSQL_DB=data_arch_prod
     python -m 03_dw_pipeline.src.dw_mv_creator
     ```
 
+6. **Insert data into materialized views**:
+    ```bash
+    python -m 03_dw_pipeline.src.dw_mv_insert
+    ```
+
 ## Tests
 
 ### Test Descriptions
