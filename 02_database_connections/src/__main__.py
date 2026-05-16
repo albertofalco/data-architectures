@@ -4,12 +4,14 @@
 
 # Importacion de librerias.
 import argparse
+from getpass import getpass
 import os
 import sys
 import pandas as pd
 from pathlib import Path
 from dotenv import load_dotenv
 from sqlalchemy import BigInteger, Integer, create_engine, text
+from sqlalchemy.engine import URL
 from sqlalchemy.exc import SQLAlchemyError
 
 #######################################################
@@ -30,14 +32,19 @@ def main():
     parser = argparse.ArgumentParser(description="Cargador de CSV a MySQL vía SQLAlchemy")
     parser.add_argument("--host", default=os.getenv('DB_HOST', '127.0.0.1'), help="Host de la base de datos")
     parser.add_argument("--user", default=os.getenv('DB_USER', 'root'), help="Usuario")
-    parser.add_argument("--password", default=os.getenv('DB_PASSWORD', ''), help="Contraseña")
+    parser.add_argument("--password", action="store_true", help="Solicitar contraseña de forma interactiva")
     parser.add_argument("--database", default=os.getenv('DB_NAME', ''), help="Nombre de la base de datos")
     
     args = parser.parse_args()
+    password = getpass("Password: ") if args.password else os.getenv('DB_PASSWORD', '')
 
     # 2. Crear el Engine de SQLAlchemy
-    # Formato: mysql+mysqlconnector://user:password@host/dbname
-    connection_url = f"mysql+mysqlconnector://{args.user}:{args.password}@{args.host}"
+    connection_url = URL.create(
+        "mysql+mysqlconnector",
+        username=args.user,
+        password=password,
+        host=args.host,
+    )
     engine = create_engine(connection_url)
 
     # 3. Verificar/Crear la base de datos
@@ -46,8 +53,14 @@ def main():
             conn.execute(text(f"CREATE DATABASE IF NOT EXISTS {args.database}"))
             conn.execute(text(f"USE {args.database}"))
         
-        # Re-creamos el engine apuntando directamente a la base de datos
-        db_url = f"{connection_url}/{args.database}"
+        # Re-creamos el engine apuntando directamente a la base de datos.
+        db_url = URL.create(
+            "mysql+mysqlconnector",
+            username=args.user,
+            password=password,
+            host=args.host,
+            database=args.database,
+        )
         engine = create_engine(db_url)
         print(f"Conectado a la base de datos: '{args.database}'")
     except SQLAlchemyError as e:

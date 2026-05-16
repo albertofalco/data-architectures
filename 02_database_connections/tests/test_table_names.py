@@ -4,6 +4,7 @@
 
 # Importacion de librerias.
 import argparse, os
+from getpass import getpass
 from pathlib import Path
 from dotenv import load_dotenv
 import pandas as pd
@@ -24,10 +25,11 @@ def main():
     parser = argparse.ArgumentParser(description="Cargador de CSV a MySQL")
     parser.add_argument("--host", default=os.getenv('DB_HOST', '127.0.0.1'), help="Host de la base de datos")
     parser.add_argument("--user", default=os.getenv('DB_USER', 'root'), help="Usuario")
-    parser.add_argument("--password", default=os.getenv('DB_PASSWORD', ''), help="Contraseña")
+    parser.add_argument("--password", action="store_true", help="Solicitar contraseña de forma interactiva")
     parser.add_argument("--database", default=os.getenv('DB_NAME', ''), help="Nombre de la base de datos")
 
     args = parser.parse_args()
+    password = getpass("Password: ") if args.password else os.getenv('DB_PASSWORD', '')
 
     data_path = BASE_DIR / 'data' / 'db_input'
 
@@ -36,7 +38,7 @@ def main():
         conn = mysql.connector.connect(
             host=args.host,
             user=args.user,
-            password=args.password,
+            password=password,
         )
         cursor = conn.cursor()
 

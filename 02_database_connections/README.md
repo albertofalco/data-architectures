@@ -122,7 +122,7 @@ DB_NAME=example
 The script also supports passing arguments via terminal:
 
 ```bash
-python -m 02_database_connections --host localhost --user user --password password --database example
+python -m 02_database_connections --host localhost --user user --password --database example
 ```
 
 Once the MySQL server connection is configured, it creates the database DB_NAME if it does not exist.
