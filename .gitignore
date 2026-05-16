@@ -87,6 +87,7 @@ AGENTS.md
 /03_dw_pipeline/assets
 .agents
 .opencode
+.codex
 opencode.json
 skills-lock.json
 
