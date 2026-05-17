@@ -7,6 +7,12 @@ paths:
   
   # Datos procesados listos para entrenamiento
   dw_data: "./data/dw_parquet/"
+
+  # Reportes generados por scripts de EDA
+  eda_reports: "./data/ml_outputs/eda_reports/"
+
+  # Reportes HTML generados con ydata-profiling
+  profile_reports: "./data/ml_outputs/profile_reports/"
   
   # Directorio para guardar objetos de modelos (archivos .pkl, .h5, .joblib)
   # models: "models/production/"
