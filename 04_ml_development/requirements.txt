@@ -1,2 +1,11 @@
 polars==1.38.1
 pyarrow==23.0.1
+pandas
+numpy
+matplotlib
+seaborn
+PyYAML
+tabulate
+# fg-data-profiling is the maintained successor of ydata-profiling/pandas-profiling.
+# It currently lists Python 3.14 support, but package metadata requires Python <3.14.
+fg-data-profiling; python_version < "3.14"
