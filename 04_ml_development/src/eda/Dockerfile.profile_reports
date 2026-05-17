@@ -1,0 +1,11 @@
+FROM python:3.13-slim
+
+ENV MPLCONFIGDIR=/tmp/matplotlib \
+    XDG_CACHE_HOME=/tmp/.cache
+
+COPY src/eda/requirements.txt /tmp/profile-reports-requirements.txt
+
+RUN python -m pip install --upgrade pip \
+    && python -m pip install --no-cache-dir -r /tmp/profile-reports-requirements.txt
+
+WORKDIR /work
