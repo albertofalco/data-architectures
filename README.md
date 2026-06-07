@@ -69,11 +69,26 @@ Data Architectures for Risk Management and Audit
 
 ### 04_ml_development
 
-**Description:** Machine Learning development module (in development).
+**Description:** Machine Learning development workspace for validating Data Warehouse parquet outputs, generating exploratory reports, building model-ready features, and running binary credit-risk model training, tuning, evaluation, and batch scoring.
 
-**Main script:** 
+**Main scripts:**
+- [`test_initial_prep.py`](04_ml_development/tests/test_initial_prep.py): Validates raw CSV files against DW parquet report outputs
+- [`build_features.py`](04_ml_development/scripts/build_features.py): Builds one-row-per-`SK_ID_CURR` feature tables from parquet or ClickHouse sources
+- [`train.py`](04_ml_development/scripts/train.py): Trains one configured model family and persists a model bundle
+- [`tune.py`](04_ml_development/scripts/tune.py): Runs Optuna hyperparameter tuning for supported model families
+- [`evaluate.py`](04_ml_development/scripts/evaluate.py): Evaluates a saved model bundle against engineered features
+- [`batch_score.py`](04_ml_development/scripts/batch_score.py): Runs production-style batch scoring from parquet or ClickHouse
+- [`benchmark_production.py`](04_ml_development/scripts/benchmark_production.py): Benchmarks batch scoring throughput and latency
 
 **Main features:**
+- DW vs raw validation: Compares raw CSV source files with `rep_*` parquet outputs using table-specific rules from `04_ml_development/config.yml`
+- EDA and profiling: Generates exploratory reports and HTML profile reports under `data/ml_outputs/`
+- Feature engineering: Loads parquet or ClickHouse report tables, aggregates one-to-many tables by `SK_ID_CURR`, joins model features, and writes outputs to `data/ml_outputs/features/`
+- Preprocessing: Applies target-safe column selection, imputation, encoding, and train/validation/test splitting
+- Model adapters: Supports `random_forest`, `xgboost`, `local_neural_net`, `mitra`, `tabpfn_3`, `tabpfn_mix`, `tabicl`, and `pyod_autoencoder`
+- Training and tuning: Persists model bundles, metrics, MLflow runs, Optuna tuning results, and performance logs under `data/ml_outputs/`
+- Production scoring: Scores saved bundles from parquet or ClickHouse sources and records prediction outputs plus benchmark metrics
 
 **Tests:**
-- `initial_prep.py`: Compares Polars DataFrames and exports differences to CSV files for analysis
+- `test_initial_prep.py`: Validates DW parquet outputs against raw CSV inputs, checking structure, data types, null values, and content
+- `test_ml_modular_pipeline.py`: Unit tests for parquet loading, feature building, target-safe preprocessing, performance logging, and model adapter behavior
