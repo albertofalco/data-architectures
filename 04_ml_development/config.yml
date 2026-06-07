@@ -13,6 +13,14 @@ paths:
 
   # Reportes HTML generados con ydata-profiling
   profile_reports: "./data/ml_outputs/profile_reports/"
+
+  # Artefactos del pipeline de machine learning
+  ml_outputs: "./data/ml_outputs/"
+  features: "./data/ml_outputs/features/"
+  models: "./data/ml_outputs/models/"
+  metrics: "./data/ml_outputs/metrics/"
+  predictions: "./data/ml_outputs/predictions/"
+  mlflow_tracking: "./data/ml_outputs/mlruns/"
   
   # Directorio para guardar objetos de modelos (archivos .pkl, .h5, .joblib)
   # models: "models/production/"
@@ -109,3 +117,127 @@ tables:
 #   test_size: 0.2
 #   random_state: 42
 #   algorithm: "RandomForest"
+
+ml_pipeline:
+  entity_key: SK_ID_CURR
+  target: TARGET
+  base_table: rep_application_train
+  feature_output: application_train_features.parquet
+  random_state: 42
+
+  split:
+    test_size: 0.2
+    validation_size: 0.2
+    stratify: true
+
+  preprocessing:
+    exclude_columns:
+      - TARGET
+      - _DW_ID
+      - SK_ID_PREV
+      - SK_ID_BUREAU
+    categorical_min_frequency: 10
+
+  feature_tables:
+    bureau:
+      table: rep_bureau
+      key: SK_ID_CURR
+      prefix: bureau
+    bureau_balance:
+      table: rep_bureau_balance
+      bridge_table: rep_bureau
+      bridge_key: SK_ID_BUREAU
+      entity_key: SK_ID_CURR
+      prefix: bureau_balance
+    previous_application:
+      table: rep_previous_application
+      key: SK_ID_CURR
+      prefix: previous
+    credit_card_balance:
+      table: rep_credit_card_balance
+      key: SK_ID_CURR
+      prefix: credit_card
+    installments_payments:
+      table: rep_installments_payments
+      key: SK_ID_CURR
+      prefix: installments
+    pos_cash_balance:
+      table: rep_pos_cash_balance
+      key: SK_ID_CURR
+      prefix: pos_cash
+
+  models:
+    random_forest:
+      n_estimators: 200
+      max_depth: null
+      class_weight: balanced
+      n_jobs: -1
+    xgboost:
+      n_estimators: 300
+      max_depth: 5
+      learning_rate: 0.05
+      eval_metric: logloss
+      tree_method: hist
+    local_neural_net:
+      hidden_units:
+        - 256
+        - 128
+      epochs: 20
+      batch_size: 512
+      learning_rate: 0.001
+    mitra:
+      fine_tune: true
+      time_limit: 3600
+      predictor_path: "./data/ml_outputs/models/autogluon/mitra/"
+    tabpfn_3:
+      max_rows: 1000000
+      license_note: "Validate production licensing before deployment."
+    tabpfn_mix:
+      model_path_classifier: "autogluon/tabpfn-mix-1.0-classifier"
+      max_epochs: 0
+      n_ensembles: 1
+      dynamic_stacking: false
+      num_bag_folds: 0
+      num_stack_levels: 0
+      fit_weighted_ensemble: false
+      predictor_path: "./data/ml_outputs/models/autogluon/tabpfn_mix/"
+      time_limit: 3600
+    tabicl:
+      enabled: true
+      n_estimators: 8
+      batch_size: 4
+      offload_mode: auto
+      disk_offload_dir: "./data/ml_outputs/foundation_cache/tabicl_offload/"
+      verbose: true
+    pyod_autoencoder:
+      train_normals_only: true
+      contamination: 0.081
+      hidden_neuron_list:
+        - 128
+        - 64
+        - 64
+        - 128
+      epoch_num: 20
+      batch_size: 256
+      learning_rate: 0.001
+      random_state: 42
+
+  tuning:
+    n_trials: 20
+    timeout_seconds: null
+
+  mlflow:
+    experiment_name: home_credit_default_risk
+
+  performance_logging:
+    enabled: true
+    output_dir: "./data/ml_outputs/metrics/performance/"
+
+  production_batch:
+    source: clickhouse
+    default_limit: 1000
+    batch_sizes:
+      - 1
+      - 10
+      - 100
+      - 1000

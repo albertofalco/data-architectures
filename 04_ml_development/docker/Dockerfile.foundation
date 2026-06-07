@@ -1,0 +1,23 @@
+FROM python:3.13-slim
+
+ENV PYTHONUNBUFFERED=1 \
+    PIP_NO_CACHE_DIR=1 \
+    HOME=/tmp \
+    HF_HOME=/work/data/ml_outputs/foundation_cache/huggingface \
+    TABPFN_MODEL_CACHE_DIR=/work/data/ml_outputs/foundation_cache/tabpfn \
+    XDG_CACHE_HOME=/work/data/ml_outputs/foundation_cache/xdg \
+    MPLCONFIGDIR=/work/data/ml_outputs/foundation_cache/matplotlib
+
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends \
+        build-essential \
+        git \
+        libgomp1 \
+    && rm -rf /var/lib/apt/lists/*
+
+COPY 04_ml_development/requirements-foundation-py313.txt /tmp/requirements-foundation-py313.txt
+
+RUN python -m pip install --upgrade pip setuptools wheel \
+    && python -m pip install -r /tmp/requirements-foundation-py313.txt
+
+WORKDIR /work

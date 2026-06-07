@@ -1,0 +1,16 @@
+pandas==2.3.3
+polars==1.41.0
+pyarrow==20.0.0
+numpy==2.3.5
+scikit-learn==1.7.2
+joblib==1.5.3
+PyYAML==6.0.3
+python-dotenv==1.2.2
+
+# Foundation model dependencies for the shared Python 3.13 container.
+# Torch is intentionally not pinned here; let TabPFN, TabICL, and AutoGluon
+# resolve a compatible build for the container platform.
+tabpfn==8.0.3
+tabicl==2.1.1
+autogluon.tabular[mitra]==1.5.0
+pyod==2.0.5
