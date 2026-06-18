@@ -1,0 +1,11 @@
+fastapi==0.124.0
+uvicorn[standard]==0.38.0
+Jinja2==3.1.6
+python-multipart==0.0.21
+PyYAML==6.0.3
+pandas==2.3.3
+pyarrow==23.0.1
+SQLAlchemy==2.0.46
+mysql-connector-python==9.5.0
+clickhouse-connect==0.15.1
+psutil==7.1.3

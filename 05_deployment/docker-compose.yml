@@ -1,0 +1,93 @@
+name: data-architectures-deployment
+
+x-superset-env: &superset-env
+  SUPERSET_SECRET_KEY: "${SUPERSET_SECRET_KEY:?SUPERSET_SECRET_KEY is required}"
+  SUPERSET_ADMIN_USERNAME: "${SUPERSET_ADMIN_USERNAME:?SUPERSET_ADMIN_USERNAME is required}"
+  SUPERSET_ADMIN_PASSWORD: "${SUPERSET_ADMIN_PASSWORD:?SUPERSET_ADMIN_PASSWORD is required}"
+  SUPERSET_ADMIN_FIRSTNAME: "${SUPERSET_ADMIN_FIRSTNAME:?SUPERSET_ADMIN_FIRSTNAME is required}"
+  SUPERSET_ADMIN_LASTNAME: "${SUPERSET_ADMIN_LASTNAME:?SUPERSET_ADMIN_LASTNAME is required}"
+  SUPERSET_ADMIN_EMAIL: "${SUPERSET_ADMIN_EMAIL:?SUPERSET_ADMIN_EMAIL is required}"
+
+services:
+  ml-api-web:
+    build:
+      context: ..
+      dockerfile: 05_deployment/api/Dockerfile
+    container_name: data-architectures-ml-api-web
+    env_file:
+      - ../.env
+    ports:
+      - "8050:8050"
+    volumes:
+      - ..:/work
+    working_dir: /work
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "python",
+          "-c",
+          "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8050/health', timeout=3)",
+        ]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+
+  superset-init:
+    build:
+      context: ..
+      dockerfile: 05_deployment/superset/Dockerfile
+    image: data-architectures-superset:4.1.1-clickhouse
+    container_name: data-architectures-superset-init
+    environment: *superset-env
+    volumes:
+      - superset_home:/app/superset_home
+    command:
+      - /bin/sh
+      - -c
+      - |
+        superset db upgrade
+        superset fab create-admin \
+          --username "$$SUPERSET_ADMIN_USERNAME" \
+          --firstname "$$SUPERSET_ADMIN_FIRSTNAME" \
+          --lastname "$$SUPERSET_ADMIN_LASTNAME" \
+          --email "$$SUPERSET_ADMIN_EMAIL" \
+          --password "$$SUPERSET_ADMIN_PASSWORD" || true
+        superset init
+
+  superset:
+    image: data-architectures-superset:4.1.1-clickhouse
+    build:
+      context: ..
+      dockerfile: 05_deployment/superset/Dockerfile
+    container_name: data-architectures-superset
+    depends_on:
+      superset-init:
+        condition: service_completed_successfully
+    ports:
+      - "8088:8088"
+    environment: *superset-env
+    volumes:
+      - superset_home:/app/superset_home
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    command:
+      - /bin/sh
+      - -c
+      - superset run -h 0.0.0.0 -p 8088
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "python",
+          "-c",
+          "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8088/health', timeout=3)",
+        ]
+      interval: 30s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  superset_home:

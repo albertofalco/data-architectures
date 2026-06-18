@@ -1,0 +1,37 @@
+paths:
+  raw_application_train: "./data/raw/application_train.csv"
+  dw_application_train: "./data/dw_parquet/rep_application_train.parquet"
+  normalized_application_train: "./data/db_input/application_train/application_train.csv"
+  holdout_ids: "./data/assets/holdout_application_train_ids.csv"
+  holdout_truth: "./data/assets/holdout_application_train_truth.csv"
+  inference_runs: "./data/ml_outputs/inference_runs/"
+  predictions: "./data/ml_outputs/predictions/"
+  metrics: "./data/ml_outputs/metrics/"
+  models: "./data/ml_outputs/models/"
+
+defaults:
+  entity_key: "SK_ID_CURR"
+  target: "TARGET"
+  source_name: "clickhouse"
+  insert_table: "application_train"
+  run_id_prefix: "prod"
+  batch_size: 1000
+  models:
+    - "xgboost"
+    - "tabpfn_mix"
+    - "pyod_autoencoder"
+
+clickhouse:
+  database: "data_arch_dw"
+  staging_database: "staging_mysql"
+  predictions_table: "ml_predictions"
+
+mysql:
+  table: "application_train"
+
+superset:
+  port: 8088
+
+api:
+  host: "0.0.0.0"
+  port: 8050

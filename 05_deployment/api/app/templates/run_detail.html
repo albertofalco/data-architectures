@@ -1,0 +1,99 @@
+{% extends "base.html" %}
+{% block title %}Run {{ run.run_id }}{% endblock %}
+{% block content %}
+<section class="panel">
+  <div>
+    <h1>{{ run.run_id }}</h1>
+    <p>Rango holdout {{ run.holdout_start_rank }} a {{ run.holdout_end_rank }}</p>
+  </div>
+  <dl class="metrics">
+    <div><dt>Estado</dt><dd>{{ run.status }}</dd></div>
+    <div><dt>Filas</dt><dd>{{ run.rows_inserted or run.rows_selected }}</dd></div>
+    <div><dt>SK_ID_CURR</dt><dd>{{ run.sk_id_curr_min }} - {{ run.sk_id_curr_max }}</dd></div>
+  </dl>
+</section>
+
+<section class="table-wrap section-gap">
+  <h2>Resumen por modelo</h2>
+  <table>
+    <thead>
+      <tr>
+        <th>Modelo</th>
+        <th>Filas</th>
+        <th>Pred. 0</th>
+        <th>Pred. 1</th>
+        <th>Tiempo total</th>
+        <th>Precision</th>
+        <th>Recall</th>
+        <th>F1</th>
+        <th>ROC-AUC</th>
+        <th>PR-AUC</th>
+        <th>Truth</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for model in model_summaries %}
+      <tr>
+        <td>{{ model.model_name }}</td>
+        <td>{{ model.rows_scored }}</td>
+        <td>{{ model.negative_predictions }}</td>
+        <td>{{ model.positive_predictions }}</td>
+        <td>
+          {% if model.inference_seconds is not none %}
+            {{ "%.3f"|format(model.inference_seconds) }}s
+          {% else %}
+            -
+          {% endif %}
+        </td>
+        <td>{{ "%.4f"|format(model.metrics.holdout_precision) if model.metrics.holdout_precision is defined else "-" }}</td>
+        <td>{{ "%.4f"|format(model.metrics.holdout_recall) if model.metrics.holdout_recall is defined else "-" }}</td>
+        <td>{{ "%.4f"|format(model.metrics.holdout_f1) if model.metrics.holdout_f1 is defined else "-" }}</td>
+        <td>{{ "%.4f"|format(model.metrics.holdout_roc_auc) if model.metrics.holdout_roc_auc is defined else "-" }}</td>
+        <td>{{ "%.4f"|format(model.metrics.holdout_pr_auc) if model.metrics.holdout_pr_auc is defined else "-" }}</td>
+        <td>{{ model.metrics.truth_status or model.prediction_status }}</td>
+      </tr>
+      {% else %}
+      <tr><td colspan="11">No hay resumen de inferencia para este run.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</section>
+
+<section class="table-wrap">
+  <h2>Predicciones locales</h2>
+  <table>
+    <thead>
+      <tr>
+        <th>SK_ID_CURR</th>
+        <th>xgboost_score</th>
+        <th>xgboost_prediction</th>
+        <th>tabpfn_mix_score</th>
+        <th>tabpfn_mix_prediction</th>
+        <th>pyod_autoencoder_score</th>
+        <th>pyod_autoencoder_prediction</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for row in predictions %}
+      <tr>
+        <td>{{ row.SK_ID_CURR }}</td>
+        {% set xgboost_score = row.get("xgboost_score") %}
+        {% set xgboost_prediction = row.get("xgboost_prediction") %}
+        {% set tabpfn_mix_score = row.get("tabpfn_mix_score") %}
+        {% set tabpfn_mix_prediction = row.get("tabpfn_mix_prediction") %}
+        {% set pyod_autoencoder_score = row.get("pyod_autoencoder_score") %}
+        {% set pyod_autoencoder_prediction = row.get("pyod_autoencoder_prediction") %}
+        <td>{{ "%.6f"|format(xgboost_score) if xgboost_score is not none else "-" }}</td>
+        <td>{{ xgboost_prediction if xgboost_prediction is not none else "-" }}</td>
+        <td>{{ "%.6f"|format(tabpfn_mix_score) if tabpfn_mix_score is not none else "-" }}</td>
+        <td>{{ tabpfn_mix_prediction if tabpfn_mix_prediction is not none else "-" }}</td>
+        <td>{{ "%.6f"|format(pyod_autoencoder_score) if pyod_autoencoder_score is not none else "-" }}</td>
+        <td>{{ pyod_autoencoder_prediction if pyod_autoencoder_prediction is not none else "-" }}</td>
+      </tr>
+      {% else %}
+      <tr><td colspan="7">No hay predicciones locales para este run.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</section>
+{% endblock %}

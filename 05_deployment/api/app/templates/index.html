@@ -1,0 +1,37 @@
+{% extends "base.html" %}
+{% block title %}Runs de inferencia{% endblock %}
+{% block content %}
+<section class="panel">
+  <div>
+    <h1>Runs de inferencia</h1>
+    <p>Seguimiento liviano de batches, predicciones y metricas operativas.</p>
+  </div>
+</section>
+
+<section class="table-wrap">
+  <table>
+    <thead>
+      <tr>
+        <th>Run</th>
+        <th>Estado</th>
+        <th>Inferencia</th>
+        <th>Filas</th>
+        <th>SK_ID_CURR</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for run in runs %}
+      <tr>
+        <td><a href="/runs/{{ run.run_id }}">{{ run.run_id }}</a></td>
+        <td>{{ run.status }}</td>
+        <td>{{ run.inference_status or "-" }}</td>
+        <td>{{ run.rows_inserted or run.rows_selected or "-" }}</td>
+        <td>{{ run.sk_id_curr_min or "-" }} - {{ run.sk_id_curr_max or "-" }}</td>
+      </tr>
+      {% else %}
+      <tr><td colspan="5">No hay manifiestos registrados todavia.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</section>
+{% endblock %}
