@@ -92,3 +92,33 @@ Data Architectures for Risk Management and Audit
 **Tests:**
 - `test_initial_prep.py`: Validates DW parquet outputs against raw CSV inputs, checking structure, data types, null values, and content
 - `test_ml_modular_pipeline.py`: Unit tests for parquet loading, feature building, target-safe preprocessing, performance logging, and model adapter behavior
+
+---
+
+### 05_deployment
+
+**Description:** Deployment simulation layer for production-style batch inference, manifest-scoped Data Warehouse refresh, lightweight FastAPI monitoring, ClickHouse prediction persistence, and Apache Superset exploration.
+
+**Main scripts and services:**
+- [`generate_holdout_assets.py`](05_deployment/scripts/generate_holdout_assets.py): Generates immutable holdout ID and private truth assets from raw and DW data
+- [`insert_holdout_batch.py`](05_deployment/scripts/insert_holdout_batch.py): Inserts the next ordered holdout batch into MySQL and writes a deployment manifest
+- [`refresh_dw_batch.py`](05_deployment/scripts/refresh_dw_batch.py): Refreshes ClickHouse storage/reporting rows for the manifest entity IDs
+- [`run_inference_batch.py`](05_deployment/scripts/run_inference_batch.py): Runs manifest-scoped batch inference using saved ML model bundles
+- [`measure_storage.py`](05_deployment/scripts/measure_storage.py): Measures local deployment artifact storage and optional database footprint
+- [`api/app/main.py`](05_deployment/api/app/main.py): FastAPI application for run, metric, and prediction browsing
+- [`docker-compose.yml`](05_deployment/docker-compose.yml): Starts the deployment API and Superset services
+
+**Main features:**
+- Holdout simulation: Builds ordered production-like batches from `application_train` holdout rows while keeping `TARGET` in a private truth asset
+- Controlled MySQL insertion: Inserts only selected manifest rows into the operational MySQL table and records batch metadata under `data/ml_outputs/inference_runs/`
+- Incremental DW refresh: Moves manifest-scoped rows from ClickHouse MySQL staging into the ClickHouse storage/reporting layer without rerunning the full DW pipeline
+- Batch inference orchestration: Reuses `04_ml_development` scoring logic to score saved model bundles for the manifest `SK_ID_CURR` values
+- Prediction persistence: Writes local parquet predictions and metrics, and optionally persists prediction rows into `data_arch_dw.ml_predictions`
+- Deployment UI: Provides JSON endpoints and HTML/Jinja views for runs, per-model summaries, and prediction previews
+- Superset integration: Provides a Dockerized Superset runtime with ClickHouse connectivity for analytical dashboarding
+
+**Tests:**
+- `test_insert_holdout_batch.py`: Validates dry-run planning, manifest-only mode, ordered batch selection, duplicate rejection, and overlap protection
+- `test_refresh_dw_batch.py`: Validates manifest-scoped ClickHouse SQL generation and duplicate entity ID rejection
+- `test_run_inference_batch.py`: Validates inference planning, missing model handling, partial failure recording, and Docker-backed scoring delegation
+- `test_api.py`: Unit tests for API handlers, run listing, prediction filtering, model summaries, and wide prediction previews
