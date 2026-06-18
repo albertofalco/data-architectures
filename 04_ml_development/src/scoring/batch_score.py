@@ -21,6 +21,8 @@ def batch_score(
     model_uri: Path,
     source_name: str = "clickhouse",
     limit: int | None = None,
+    entity_id_values: list[int | str] | None = None,
+    output_suffix: str = "batch_predictions",
 ) -> Path:
     """Score a production batch and persist predictions plus timing metrics."""
     performance = PerformanceLogger()
@@ -29,7 +31,7 @@ def batch_score(
     builder = FeatureBuilder(source=source, config=config)
 
     with performance.timed("production_extract_transform_seconds"):
-        df = builder.collect(limit=limit).to_pandas()
+        df = builder.collect(limit=limit, entity_ids=entity_id_values).to_pandas()
 
     ids = entity_ids(df, config)
     X, _ = split_features_target(df, config=config, require_target=False)
@@ -50,11 +52,13 @@ def batch_score(
     )
     performance.add("production_total_seconds", round(total_seconds, 6))
     performance.add("batch_size", len(X))
+    if entity_id_values is not None:
+        performance.add("requested_entity_ids", len(entity_id_values))
     performance.add_throughput(rows=len(X), total_seconds_metric="production_total_seconds")
 
     predictions_dir = configured_path(config, "predictions", "./data/ml_outputs/predictions/")
     predictions_dir.mkdir(parents=True, exist_ok=True)
-    output_path = predictions_dir / f"{bundle['model_name']}_batch_predictions.parquet"
+    output_path = predictions_dir / f"{bundle['model_name']}_{output_suffix}.parquet"
     result = pd.DataFrame(
         {
             config.get("ml_pipeline", {}).get("entity_key", "SK_ID_CURR"): ids,
@@ -66,5 +70,5 @@ def batch_score(
     result.to_parquet(output_path, index=False)
 
     metrics_dir = configured_path(config, "metrics", "./data/ml_outputs/metrics/")
-    performance.write_json(metrics_dir / f"{bundle['model_name']}_batch_score_metrics.json")
+    performance.write_json(metrics_dir / f"{bundle['model_name']}_{output_suffix}_metrics.json")
     return output_path

@@ -23,11 +23,20 @@ class FeatureBuilder:
         self.target = self.pipeline_config.get("target", "TARGET")
         self.base_table = self.pipeline_config.get("base_table", "rep_application_train")
 
-    def build(self, limit: int | None = None) -> pl.LazyFrame:
+    def build(
+        self,
+        limit: int | None = None,
+        entity_ids: list[int | str] | None = None,
+    ) -> pl.LazyFrame:
         """Build the full feature table as a lazy frame."""
-        base = self.source.load_table(self.base_table, limit=limit).unique(subset=[self.entity_key])
-        scoped_entity_ids: list[int | str] | None = None
-        if limit is not None:
+        base = self.source.load_table(
+            self.base_table,
+            limit=limit,
+            entity_ids=entity_ids,
+            entity_key=self.entity_key,
+        ).unique(subset=[self.entity_key])
+        scoped_entity_ids: list[int | str] | None = entity_ids
+        if scoped_entity_ids is None and limit is not None:
             scoped_entity_ids = (
                 base.select(self.entity_key).collect().get_column(self.entity_key).to_list()
             )
@@ -79,6 +88,10 @@ class FeatureBuilder:
 
         return left_join_features(base=base, feature_frames=feature_frames, key=self.entity_key)
 
-    def collect(self, limit: int | None = None) -> pl.DataFrame:
+    def collect(
+        self,
+        limit: int | None = None,
+        entity_ids: list[int | str] | None = None,
+    ) -> pl.DataFrame:
         """Build and collect the feature table."""
-        return self.build(limit=limit).collect()
+        return self.build(limit=limit, entity_ids=entity_ids).collect()

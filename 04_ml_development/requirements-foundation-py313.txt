@@ -6,6 +6,7 @@ scikit-learn==1.7.2
 joblib==1.5.3
 PyYAML==6.0.3
 python-dotenv==1.2.2
+clickhouse-connect==0.15.1
 
 # Foundation model dependencies for the shared Python 3.13 container.
 # Torch is intentionally not pinned here; let TabPFN, TabICL, and AutoGluon
