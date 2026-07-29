@@ -34,12 +34,13 @@ Data Architectures for Risk Management and Audit
 - Dynamic CSV file detection in data/db_input/
 - Automatic data type inference
 - Conversion of np.nan and None values to NULL
-- TRUNCATE existing tables on reload
+- Replace existing tables on reload using `to_sql(..., if_exists="replace")`
 
 **Tests:**
 - `test_db_connection.py`: Verifies database connectivity using both `mysql-connector-python` and `SQLAlchemy`
 - `test_table_names.py`: Compares MySQL table names with CSV files in the folder to validate synchronization
-- `test_integrity.py`: Table content control verifying integrity against source files, validating table names, structure (shape), columns, and values
+- `test_dbinput_db.py`: Verifies normalized CSV content against MySQL tables, including table names, structure, columns, and values
+- `test_dbinput_debug.py`: Investigates isolated CSV-to-MySQL differences using configurable samples and optional difference exports
 
 ---
 
@@ -75,19 +76,16 @@ Data Architectures for Risk Management and Audit
 - [`test_initial_prep.py`](04_ml_development/tests/test_initial_prep.py): Validates raw CSV files against DW parquet report outputs
 - [`build_features.py`](04_ml_development/scripts/build_features.py): Builds one-row-per-`SK_ID_CURR` feature tables from parquet or ClickHouse sources
 - [`train.py`](04_ml_development/scripts/train.py): Trains one configured model family and persists a model bundle
-- [`tune.py`](04_ml_development/scripts/tune.py): Runs Optuna hyperparameter tuning for supported model families
+- [`tune.py`](04_ml_development/scripts/tune.py): Tunes supported model families using Optuna for local baselines and fixed grid search for `tabicl`, `tabpfn_mix`, and `pyod_autoencoder`
 - [`evaluate.py`](04_ml_development/scripts/evaluate.py): Evaluates a saved model bundle against engineered features
 - [`batch_score.py`](04_ml_development/scripts/batch_score.py): Runs production-style batch scoring from parquet or ClickHouse
 - [`benchmark_production.py`](04_ml_development/scripts/benchmark_production.py): Benchmarks batch scoring throughput and latency
 
 **Main features:**
-- DW vs raw validation: Compares raw CSV source files with `rep_*` parquet outputs using table-specific rules from `04_ml_development/config.yml`
-- EDA and profiling: Generates exploratory reports and HTML profile reports under `data/ml_outputs/`
-- Feature engineering: Loads parquet or ClickHouse report tables, aggregates one-to-many tables by `SK_ID_CURR`, joins model features, and writes outputs to `data/ml_outputs/features/`
-- Preprocessing: Applies target-safe column selection, imputation, encoding, and train/validation/test splitting
-- Model adapters: Supports `random_forest`, `xgboost`, `local_neural_net`, `mitra`, `tabpfn_3`, `tabpfn_mix`, `tabicl`, and `pyod_autoencoder`
-- Training and tuning: Persists model bundles, metrics, MLflow runs, Optuna tuning results, and performance logs under `data/ml_outputs/`
-- Production scoring: Scores saved bundles from parquet or ClickHouse sources and records prediction outputs plus benchmark metrics
+- Validates and profiles data warehouse outputs
+- Builds and preprocesses credit-risk features
+- Trains, tunes, and evaluates multiple model families
+- Supports production-style batch scoring and benchmarking
 
 **Tests:**
 - `test_initial_prep.py`: Validates DW parquet outputs against raw CSV inputs, checking structure, data types, null values, and content
@@ -109,13 +107,10 @@ Data Architectures for Risk Management and Audit
 - [`docker-compose.yml`](05_deployment/docker-compose.yml): Starts the deployment API and Superset services
 
 **Main features:**
-- Holdout simulation: Builds ordered production-like batches from `application_train` holdout rows while keeping `TARGET` in a private truth asset
-- Controlled MySQL insertion: Inserts only selected manifest rows into the operational MySQL table and records batch metadata under `data/ml_outputs/inference_runs/`
-- Incremental DW refresh: Moves manifest-scoped rows from ClickHouse MySQL staging into the ClickHouse storage/reporting layer without rerunning the full DW pipeline
-- Batch inference orchestration: Reuses `04_ml_development` scoring logic to score saved model bundles for the manifest `SK_ID_CURR` values
-- Prediction persistence: Writes local parquet predictions and metrics, and optionally persists prediction rows into `data_arch_dw.ml_predictions`
-- Deployment UI: Provides JSON endpoints and HTML/Jinja views for runs, per-model summaries, and prediction previews
-- Superset integration: Provides a Dockerized Superset runtime with ClickHouse connectivity for analytical dashboarding
+- Simulates controlled holdout batches across MySQL and ClickHouse
+- Runs manifest-scoped inference with saved ML models
+- Persists predictions and deployment metrics
+- Provides API, web, and Superset interfaces for monitoring and analysis
 
 **Tests:**
 - `test_insert_holdout_batch.py`: Validates dry-run planning, manifest-only mode, ordered batch selection, duplicate rejection, and overlap protection
