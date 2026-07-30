@@ -1,5 +1,7 @@
 """Tests for the lightweight deployment API."""
 
+# ==================== IMPORTS ====================
+
 from __future__ import annotations
 
 import json
@@ -10,6 +12,8 @@ import pytest
 import app.main as api_main
 import app.services as api_services
 
+
+# ==================== HELPER FUNCTIONS ====================
 
 def _write_api_fixtures(config: dict) -> None:
     """Create local run and prediction fixtures."""
@@ -63,6 +67,8 @@ def _write_api_fixtures(config: dict) -> None:
         encoding="utf-8",
     )
 
+
+# ==================== TESTS ====================
 
 @pytest.mark.skip(reason="fastapi.testclient.TestClient hangs in this Python 3.14 test environment")
 def test_fastapi_testclient_smoke() -> None:

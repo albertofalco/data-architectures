@@ -1,5 +1,7 @@
 """Generate immutable holdout assets for production inference simulation."""
 
+# ==================== IMPORTS ====================
+
 from __future__ import annotations
 
 import argparse
@@ -12,6 +14,8 @@ add_project_paths()
 
 from deployment_utils import configured_path, ensure_parent, load_deployment_config
 
+
+# ==================== MAIN FUNCTIONS ====================
 
 def parse_args() -> argparse.Namespace:
     """Parse CLI arguments."""
@@ -62,6 +66,8 @@ def main() -> int:
     print(f"Holdout truth written to {truth_path} ({len(truth)} rows)")
     return 0
 
+
+# ==================== EXECUTION ====================
 
 if __name__ == "__main__":
     raise SystemExit(main())

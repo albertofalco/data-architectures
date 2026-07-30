@@ -1,5 +1,7 @@
 """Insert the next ordered holdout batch into MySQL and write a manifest."""
 
+# ==================== IMPORTS ====================
+
 from __future__ import annotations
 
 import argparse
@@ -27,6 +29,8 @@ from deployment_utils import (
 )
 
 
+# ==================== MAIN FUNCTIONS ====================
+
 def parse_args() -> argparse.Namespace:
     """Parse CLI arguments."""
     parser = argparse.ArgumentParser(description="Insert a controlled holdout batch.")
@@ -42,7 +46,7 @@ def parse_args() -> argparse.Namespace:
 
 
 def main() -> int:
-    """Insert the next holdout slice into MySQL."""
+    """Select and validate a holdout batch, optionally insert it, and write its manifest."""
     args = parse_args()
     config = load_deployment_config()
     defaults = config.get("defaults", {})
@@ -140,6 +144,8 @@ def main() -> int:
     print(f"Manifest written to {output_path}")
     return 0
 
+
+# ==================== EXECUTION ====================
 
 if __name__ == "__main__":
     raise SystemExit(main())

@@ -1,5 +1,7 @@
 """Measure local artifact storage and optionally database storage footprints."""
 
+# ==================== IMPORTS ====================
+
 from __future__ import annotations
 
 import argparse
@@ -19,6 +21,8 @@ from deployment_utils import (
     write_json,
 )
 
+
+# ==================== HELPER FUNCTIONS ====================
 
 def parse_args() -> argparse.Namespace:
     """Parse CLI arguments."""
@@ -101,6 +105,8 @@ def _database_storage(config: dict) -> dict:
     return results
 
 
+# ==================== MAIN FUNCTIONS ====================
+
 def main() -> int:
     """Measure storage footprint and write a JSON report."""
     args = parse_args()
@@ -119,6 +125,8 @@ def main() -> int:
     print(f"Storage metrics written to {output_path}")
     return 0
 
+
+# ==================== EXECUTION ====================
 
 if __name__ == "__main__":
     raise SystemExit(main())

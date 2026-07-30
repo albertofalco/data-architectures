@@ -1,5 +1,7 @@
 """Run manifest-scoped batch inference using existing ML scoring logic."""
 
+# ==================== IMPORTS ====================
+
 from __future__ import annotations
 
 import argparse
@@ -36,9 +38,13 @@ from scoring.batch_score import batch_score
 from training.evaluate_model import classification_metrics
 
 
+# ==================== CONFIGURATION ====================
+
 FOUNDATION_DOCKER_MODELS = {"tabpfn_mix", "pyod_autoencoder"}
 FOUNDATION_IMAGE = "data-architectures-foundation:py313"
 
+
+# ==================== HELPER FUNCTIONS ====================
 
 def parse_args() -> argparse.Namespace:
     """Parse CLI arguments."""
@@ -301,8 +307,10 @@ def _add_truth_metrics(
     return metrics
 
 
+# ==================== MAIN FUNCTIONS ====================
+
 def main() -> int:
-    """Run scoring for each configured model."""
+    """Score configured models, persist predictions and metrics, and update the manifest."""
     args = parse_args()
     deployment_config = load_deployment_config()
     ml_config = load_ml_config()
@@ -422,6 +430,8 @@ def main() -> int:
     print(f"Inference recorded for run {run_id}")
     return 0 if any(result.get("status") == "scored" for result in inference_results) else 1
 
+
+# ==================== EXECUTION ====================
 
 if __name__ == "__main__":
     raise SystemExit(main())

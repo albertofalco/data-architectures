@@ -1,5 +1,7 @@
 """Tests for controlled holdout insertion planning."""
 
+# ==================== IMPORTS ====================
+
 from __future__ import annotations
 
 import ast
@@ -12,6 +14,8 @@ import pytest
 
 from conftest import load_script_module
 
+
+# ==================== HELPER FUNCTIONS ====================
 
 def _write_holdout_inputs_with_size(config: dict, size: int) -> None:
     """Create holdout assets and normalized source files with deterministic IDs."""
@@ -45,6 +49,8 @@ def _write_manifest(config: dict, payload: dict) -> None:
     run_id = payload["run_id"]
     (runs_dir / f"{run_id}.json").write_text(json.dumps(payload), encoding="utf-8")
 
+
+# ==================== TESTS ====================
 
 def test_dry_run_selects_ordered_holdout_without_writing_manifest(
     deployment_config: dict,

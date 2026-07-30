@@ -1,5 +1,7 @@
 """Shared utilities for deployment scripts."""
 
+# ==================== IMPORTS ====================
+
 from __future__ import annotations
 
 import json
@@ -13,9 +15,13 @@ from typing import Any, Iterable, Iterator, Sequence
 import yaml
 
 
+# ==================== CONFIGURATION ====================
+
 REPO_ROOT = Path(__file__).resolve().parents[2]
 CONFIG_PATH = REPO_ROOT / "05_deployment" / "config" / "deployment.yml"
 
+
+# ==================== HELPER FUNCTIONS ====================
 
 def resolve_path(path_value: str | Path) -> Path:
     """Resolve a path relative to the repository root."""

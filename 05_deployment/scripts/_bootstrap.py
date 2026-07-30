@@ -1,10 +1,14 @@
 """Bootstrap helpers for deployment scripts."""
 
+# ==================== IMPORTS ====================
+
 from __future__ import annotations
 
 import sys
 from pathlib import Path
 
+
+# ==================== HELPER FUNCTIONS ====================
 
 def add_project_paths() -> Path:
     """Add repository and ML source paths to sys.path."""

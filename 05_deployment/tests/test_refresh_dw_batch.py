@@ -1,5 +1,7 @@
 """Tests for ClickHouse refresh planning."""
 
+# ==================== IMPORTS ====================
+
 from __future__ import annotations
 
 import json
@@ -10,6 +12,8 @@ import pytest
 
 from conftest import load_script_module
 
+
+# ==================== TESTS ====================
 
 def test_refresh_dry_run_prints_sql_without_connecting(
     deployment_config: dict,

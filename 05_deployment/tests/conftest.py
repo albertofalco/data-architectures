@@ -1,5 +1,7 @@
 """Test helpers for the deployment module."""
 
+# ==================== IMPORTS ====================
+
 from __future__ import annotations
 
 import importlib.util
@@ -9,15 +11,21 @@ from pathlib import Path
 import pytest
 
 
+# ==================== CONFIGURATION ====================
+
 REPO_ROOT = Path(__file__).resolve().parents[2]
 SCRIPTS_DIR = REPO_ROOT / "05_deployment" / "scripts"
 API_DIR = REPO_ROOT / "05_deployment" / "api"
 
 
+# ==================== TEST SETUP ====================
+
 for path in (str(SCRIPTS_DIR), str(API_DIR), str(REPO_ROOT / "04_ml_development" / "src")):
     if path not in sys.path:
         sys.path.insert(0, path)
 
+
+# ==================== HELPER FUNCTIONS ====================
 
 def load_script_module(name: str):
     """Load a deployment script as an importable module."""
@@ -28,6 +36,8 @@ def load_script_module(name: str):
     spec.loader.exec_module(module)
     return module
 
+
+# ==================== FIXTURES ====================
 
 @pytest.fixture
 def deployment_config(tmp_path: Path) -> dict:

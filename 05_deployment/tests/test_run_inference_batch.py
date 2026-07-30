@@ -1,5 +1,7 @@
 """Tests for manifest-scoped inference orchestration."""
 
+# ==================== IMPORTS ====================
+
 from __future__ import annotations
 
 import ast
@@ -13,8 +15,12 @@ import pytest
 from conftest import load_script_module
 
 
+# ==================== CONFIGURATION ====================
+
 REPO_ROOT = Path(__file__).resolve().parents[2]
 
+
+# ==================== HELPER FUNCTIONS ====================
 
 def _write_inference_inputs(config: dict, run_id: str = "run_1") -> Path:
     """Create model, truth, and manifest fixtures."""
@@ -40,6 +46,8 @@ def _write_inference_inputs(config: dict, run_id: str = "run_1") -> Path:
     )
     return manifest_path
 
+
+# ==================== TESTS ====================
 
 def test_dry_run_validates_inputs_without_scoring(
     deployment_config: dict,

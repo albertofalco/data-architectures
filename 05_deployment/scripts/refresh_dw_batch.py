@@ -1,5 +1,7 @@
 """Refresh ClickHouse storage/reporting for a manifest-scoped application batch."""
 
+# ==================== IMPORTS ====================
+
 from __future__ import annotations
 
 import argparse
@@ -19,6 +21,8 @@ from deployment_utils import (
     write_json,
 )
 
+
+# ==================== HELPER FUNCTIONS ====================
 
 def parse_args() -> argparse.Namespace:
     """Parse CLI arguments."""
@@ -64,8 +68,23 @@ def _duplicate_sql(database: str, table: str, entity_key: str, entity_ids: list[
     """.strip()
 
 
+def load_manifest_path(path_or_run_id: str, config: dict) -> object:
+    """Resolve manifest path after loading by path or run id."""
+    from pathlib import Path
+    from deployment_utils import manifest_path, resolve_path
+
+    candidate = Path(path_or_run_id)
+    if not candidate.suffix:
+        return manifest_path(config, path_or_run_id)
+    if not candidate.is_absolute():
+        return resolve_path(candidate)
+    return candidate
+
+
+# ==================== MAIN FUNCTIONS ====================
+
 def main() -> int:
-    """Insert manifest-scoped rows from staging into ClickHouse storage."""
+    """Validate and refresh manifest rows in ClickHouse, then record refresh results."""
     args = parse_args()
     config = load_deployment_config()
     manifest = load_manifest(args.manifest, config)
@@ -129,18 +148,7 @@ def main() -> int:
     return 0
 
 
-def load_manifest_path(path_or_run_id: str, config: dict) -> object:
-    """Resolve manifest path after loading by path or run id."""
-    from pathlib import Path
-    from deployment_utils import manifest_path, resolve_path
-
-    candidate = Path(path_or_run_id)
-    if not candidate.suffix:
-        return manifest_path(config, path_or_run_id)
-    if not candidate.is_absolute():
-        return resolve_path(candidate)
-    return candidate
-
+# ==================== EXECUTION ====================
 
 if __name__ == "__main__":
     raise SystemExit(main())

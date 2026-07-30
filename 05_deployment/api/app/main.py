@@ -1,5 +1,7 @@
 """FastAPI app for deployment monitoring and lightweight prediction browsing."""
 
+# ==================== IMPORTS ====================
+
 from __future__ import annotations
 
 from pathlib import Path
@@ -24,12 +26,16 @@ from .services import (
 )
 
 
+# ==================== CONFIGURATION ====================
+
 APP_DIR = Path(__file__).resolve().parent
 
 app = FastAPI(title="Data Architectures Deployment", version="0.1.0")
 app.mount("/static", StaticFiles(directory=APP_DIR / "static"), name="static")
 templates = Jinja2Templates(directory=APP_DIR / "templates")
 
+
+# ==================== REQUEST MODELS ====================
 
 class BatchInferenceRequest(BaseModel):
     """Request body for manifest-scoped inference."""
@@ -39,6 +45,8 @@ class BatchInferenceRequest(BaseModel):
     models: list[str] | None = None
     skip_clickhouse: bool = False
 
+
+# ==================== API ENDPOINTS ====================
 
 @app.get("/health")
 def health() -> dict[str, str]:

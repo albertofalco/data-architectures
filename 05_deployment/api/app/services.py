@@ -1,5 +1,7 @@
 """Service helpers for the deployment API."""
 
+# ==================== IMPORTS ====================
+
 from __future__ import annotations
 
 import subprocess
@@ -12,10 +14,14 @@ import pandas as pd
 import yaml
 
 
+# ==================== CONFIGURATION ====================
+
 REPO_ROOT = Path(__file__).resolve().parents[3]
 DEPLOYMENT_CONFIG = REPO_ROOT / "05_deployment" / "config" / "deployment.yml"
 PREDICTION_DISPLAY_MODELS = ("xgboost", "tabpfn_mix", "pyod_autoencoder")
 
+
+# ==================== EXCEPTIONS ====================
 
 class DeploymentAPIError(RuntimeError):
     """Base error for readable API failures."""
@@ -24,6 +30,8 @@ class DeploymentAPIError(RuntimeError):
 class PredictionReadError(DeploymentAPIError):
     """Raised when local prediction files cannot be read."""
 
+
+# ==================== SERVICE FUNCTIONS ====================
 
 def _resolve(path_value: str | Path) -> Path:
     """Resolve a path relative to repository root."""
