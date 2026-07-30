@@ -1,9 +1,13 @@
 """Model evaluation utilities."""
 
+# ==================== IMPORTS ====================
+
 from __future__ import annotations
 
 import numpy as np
 
+
+# ==================== HELPER FUNCTIONS ====================
 
 def positive_class_scores(probabilities) -> np.ndarray:
     """Return positive-class scores from predict_proba output."""
@@ -14,7 +18,7 @@ def positive_class_scores(probabilities) -> np.ndarray:
 
 
 def classification_metrics(y_true, y_pred, y_score) -> dict[str, float]:
-    """Compute binary classification metrics."""
+    """Compute precision, recall, F1, ROC-AUC, and PR-AUC metrics."""
     from sklearn.metrics import (
         average_precision_score,
         f1_score,

@@ -1,5 +1,7 @@
 """AutoGluon TabPFNMix foundation model adapter."""
 
+# ==================== IMPORTS ====================
+
 from __future__ import annotations
 
 from pathlib import Path
@@ -9,12 +11,15 @@ import pandas as pd
 from common.config import resolve_project_path
 
 
+# ==================== MAIN CLASSES ====================
+
 class TabPFNMixModel:
     """AutoGluon TabPFNMix classifier adapter."""
 
     name = "tabpfn_mix"
 
     def __init__(self, config: dict):
+        """Initialize the AutoGluon adapter and retain its configuration."""
         try:
             from autogluon.tabular import TabularPredictor
         except ImportError as error:
@@ -33,6 +38,7 @@ class TabPFNMixModel:
         return pd.DataFrame(X)
 
     def fit(self, X, y):
+        """Fit a binary TabPFNMix predictor and return this adapter."""
         target = self.config.get("ml_pipeline", {}).get("target", "TARGET")
         params = self.config.get("ml_pipeline", {}).get("models", {}).get("tabpfn_mix", {})
         predictor_path = resolve_project_path(
@@ -72,6 +78,7 @@ class TabPFNMixModel:
         return self
 
     def _ensure_predictor(self):
+        """Return the active predictor, loading it from disk when needed."""
         if self.predictor is None:
             if self.predictor_path is None:
                 params = self.config.get("ml_pipeline", {}).get("models", {}).get("tabpfn_mix", {})
@@ -82,12 +89,15 @@ class TabPFNMixModel:
         return self.predictor
 
     def predict(self, X):
+        """Predict class labels with the active AutoGluon predictor."""
         return self._ensure_predictor().predict(self._as_dataframe(X)).to_numpy()
 
     def predict_proba(self, X):
+        """Predict class probabilities with the active predictor."""
         return self._ensure_predictor().predict_proba(self._as_dataframe(X)).to_numpy()
 
     def save(self, path: Path) -> Path:
+        """Return the AutoGluon artifact directory for the fitted model."""
         if self.predictor is None:
             raise RuntimeError("Cannot save an unfitted TabPFNMix model.")
         return Path(self.predictor.path)

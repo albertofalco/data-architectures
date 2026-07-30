@@ -1,12 +1,16 @@
 """Logging configuration helpers."""
 
+# ==================== IMPORTS ====================
+
 from __future__ import annotations
 
 import logging
 
 
+# ==================== HELPER FUNCTIONS ====================
+
 def get_logger(name: str) -> logging.Logger:
-    """Return a module logger with a consistent default handler."""
+    """Return an INFO logger, adding the default handler when none exists."""
     logger = logging.getLogger(name)
     if not logger.handlers:
         handler = logging.StreamHandler()

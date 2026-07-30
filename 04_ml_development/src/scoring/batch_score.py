@@ -1,5 +1,7 @@
 """Production-style batch scoring use case."""
 
+# ==================== IMPORTS ====================
+
 from __future__ import annotations
 
 from pathlib import Path
@@ -15,6 +17,8 @@ from preprocessing.column_selection import entity_ids, split_features_target
 from training.evaluate_model import positive_class_scores
 from training.model_registry import load_bundle
 
+
+# ==================== MAIN FUNCTIONS ====================
 
 def batch_score(
     config: dict[str, Any],

@@ -1,5 +1,7 @@
 """Production scoring benchmark use case."""
 
+# ==================== IMPORTS ====================
+
 from __future__ import annotations
 
 import json
@@ -10,13 +12,15 @@ from common.config import configured_path
 from scoring.batch_score import batch_score
 
 
+# ==================== MAIN FUNCTIONS ====================
+
 def benchmark_production(
     config: dict[str, Any],
     model_uri: Path,
     batch_sizes: list[int],
     source_name: str = "clickhouse",
 ) -> Path:
-    """Run batch scoring for several batch sizes."""
+    """Run several batch sizes and persist their combined scoring metrics."""
     rows = []
     metrics_dir = configured_path(config, "metrics", "./data/ml_outputs/metrics/")
     model_name = Path(model_uri).stem.replace("_bundle", "")

@@ -1,48 +1,31 @@
-"""
-Verificación Inicial de Datos (ML)
-==================================
+"""Structural and content parity checks for raw and Data Warehouse DataFrames."""
 
-Script para comparar DataFrames de Polars entre datos crudos y datos de Data Warehouse.
-Realiza validaciones de estructura, tipos de datos y contenido.
-"""
+# ==================== IMPORTS ====================
 
-# CONFIGURACION LOCAL
-
-# IMPORTACION DE LIBRERIAS
 import yaml
 import os
 import polars as pl
 import pathlib
 import zipfile
 
-# Rutas del proyecto
+# ==================== CONFIGURATION ====================
+
 FILE_PATH = pathlib.Path(__file__).resolve()
 MODULE_DIR = pathlib.Path(FILE_PATH).parent.parent
 BASE_DIR = MODULE_DIR.parent
 
-# Cargar el archivo de configuración
 with open(pathlib.Path(FILE_PATH).parent.parent / "config.yml", "r") as f:
     config = yaml.safe_load(f)
 
-# Rutas de los datos
 RAW_DATA_DIR = pathlib.Path(BASE_DIR) / config["paths"]["raw_data"]
 DW_DATA_DIR = pathlib.Path(BASE_DIR) / config["paths"]["dw_data"]
 
-# Tablas de configuración
 TABLES_LIST = config.get("tables", {})
 
-# Lectura de dataframes.
+# ==================== HELPER FUNCTIONS ====================
+
 def read_dataframes(dw_file_path, raw_file_path) -> tuple[pl.DataFrame, pl.DataFrame] | None:
-    """
-    Lee los archivos de datos desde las rutas especificadas.
-
-    Args:
-        dw_file_path (pathlib.Path): Ruta al archivo parquet del Data Warehouse.
-        raw_file_path (pathlib.Path): Ruta al archivo CSV de datos crudos.
-
-    Returns:
-        tuple[pl.DataFrame, pl.DataFrame] | None: Tupla con los DataFrames (DW, Raw) o None si hay error.
-    """
+    """Read the Data Warehouse parquet and matching raw CSV DataFrames."""
     try: 
         df_dw = pl.read_parquet(dw_file_path)
         df_raw = pl.read_csv(raw_file_path)       
@@ -53,24 +36,11 @@ def read_dataframes(dw_file_path, raw_file_path) -> tuple[pl.DataFrame, pl.DataF
         print(f"Error reading dataframes: {e}")
         return None
 
-# Funcion para unificar tipos de datos de columnas comunes.
 def apply_schema_to_matching_columns(source_df: pl.DataFrame, target_df: pl.DataFrame) -> pl.DataFrame:
-    """
-    Aplica los tipos de datos de las columnas del DataFrame de origen a las
-    columnas coincidentes del DataFrame de destino.
-
-    Args:
-        source_df (pl.DataFrame): El DataFrame de origen con los tipos de datos deseados.
-        target_df (pl.DataFrame): El DataFrame de destino al que se aplicarán los tipos de datos.
-
-    Returns:
-        pl.DataFrame: El DataFrame de destino con los tipos de datos de las columnas
-                      coincidentes actualizados.
-    """
+    """Apply source data types to columns shared with the target DataFrame."""
     modified_df = target_df.clone()
     source_schema = source_df.schema
 
-    # Obtener las columnas comunes
     common_columns = [col for col in source_schema if col in modified_df.columns]
 
     for col_name in common_columns:
@@ -78,18 +48,15 @@ def apply_schema_to_matching_columns(source_df: pl.DataFrame, target_df: pl.Data
         current_dtype = modified_df.schema[col_name]
 
         if current_dtype != source_dtype:
-            # Usar with_columns para aplicar el cast in situ
             modified_df = modified_df.with_columns(pl.col(col_name).cast(source_dtype))
     return modified_df
 
 def apply_preprocessing(df, name, row_slice=None, exclude_cols=None, sort_cols=None):
-    """Encapsula la eliminación de columnas, ordenamiento y recorte de filas."""
-    # 1. Exclusión de Columnas
+    """Apply configured column exclusion, sorting, and row slicing."""
     if exclude_cols:
         df = df.drop(exclude_cols)
         print(f"[{name}] Columnas excluidas: {exclude_cols}")
 
-    # 2. Ordenamiento
     if sort_cols:
         try:
             df = df.sort(sort_cols)
@@ -97,7 +64,6 @@ def apply_preprocessing(df, name, row_slice=None, exclude_cols=None, sort_cols=N
         except Exception as e:
             print(f"Advertencia: No se pudo ordenar {name}. Error: {e}")
             
-    # 3. Recorte de Filas
     if row_slice:
         try:
             start, end = map(int, row_slice.split(':'))
@@ -109,7 +75,7 @@ def apply_preprocessing(df, name, row_slice=None, exclude_cols=None, sort_cols=N
     return df
 
 def check_structure(df1, df2, n1, n2):
-    """Compara dimensiones y nombres de columnas."""
+    """Compare DataFrame dimensions and column names."""
     print(f"\n--- Estructura ---")
     print(f"Shape: {n1}={df1.shape}, {n2}={df2.shape}")
     
@@ -125,7 +91,7 @@ def check_structure(df1, df2, n1, n2):
     return list(common), len(only_df1) == 0 and len(only_df2) == 0
 
 def check_dtypes(df1, df2, common_cols):
-    """Verifica si los tipos de datos coinciden en las columnas comunes."""
+    """Return data type mismatches for columns shared by both DataFrames."""
     mismatches = []
     for col in sorted(common_cols):
         t1, t2 = df1.schema[col], df2.schema[col]
@@ -139,7 +105,7 @@ def check_dtypes(df1, df2, common_cols):
     return mismatches
 
 def compare_content(df1, df2, common_cols, float_tolerance):
-    """Compara el contenido fila a fila para las columnas comunes."""
+    """Compare shared columns row by row with numeric tolerance."""
     print(f"\n--- Contenido (Tolerancia: {float_tolerance}) ---")
     mismatched_report = []
 
@@ -147,14 +113,12 @@ def compare_content(df1, df2, common_cols, float_tolerance):
         c1, c2 = df1[col], df2[col]
         dtype = df1.schema[col]
         
-        # Lógica de diferencia de nulos (común para todos)
+        # Null mismatches apply independently of the column data type.
         null_diff = c1.is_null() != c2.is_null()
         
         if dtype in [pl.Float32, pl.Float64]:
-            # Diferencia numérica en no-nulos
             val_diff = (c1.is_not_null() & c2.is_not_null()) & ((c1 - c2).abs() > float_tolerance)
         else:
-            # Diferencia estricta en no-nulos
             val_diff = (c1.is_not_null() & c2.is_not_null()) & (c1 != c2)
 
         total_mismatches = (null_diff | val_diff).sum()
@@ -181,40 +145,23 @@ def compare_content(df1, df2, common_cols, float_tolerance):
         print("Contenidos idénticos en columnas comunes")
 
 def compare_polars_dataframes(df1, df2, **kwargs):
-    """
-    Orquesta la comparación completa entre dos DataFrames de Polars.
-
-    Realiza preprocesamiento, chequeo de estructura, tipos, nulos y contenido.
-
-    Args:
-        df1 (pl.DataFrame): Primer DataFrame para comparar.
-        df2 (pl.DataFrame): Segundo DataFrame para comparar.
-        **kwargs: Argumentos opcionales para configuración de nombres, tolerancia, slices, etc.
-
-    Returns:
-        tuple[pl.DataFrame, pl.DataFrame]: Los DataFrames procesados.
-    """
-    # Extraer parámetros con valores por defecto
+    """Run preprocessing and parity checks for two Polars DataFrames."""
     n1 = kwargs.get("df1_name", "df1")
     n2 = kwargs.get("df2_name", "df2")
     tol = kwargs.get("float_tolerance", 1e-5)
 
-    # 1. Pre-procesamiento
     df1_proc = apply_preprocessing(df1, n1, kwargs.get("df1_row_slice"), 
                                    kwargs.get("df1_exclude_cols"), kwargs.get("df1_col_sort"))
     df2_proc = apply_preprocessing(df2, n2, kwargs.get("df2_row_slice"), 
                                    kwargs.get("df2_exclude_cols"), kwargs.get("df2_col_sort"))
 
-    # 2. Análisis Estructural
     common_cols, same_cols = check_structure(df1_proc, df2_proc, n1, n2)
     dtype_mismatches = check_dtypes(df1_proc, df2_proc, common_cols)
 
-    # 3. Nulos (Opcional, pero estaba en tu código original)
     print(f"\n--- Nulos ---")
     print(f"Nulos en {n1}: {df1_proc.null_count().sum_horizontal().item()}")
     print(f"Nulos en {n2}: {df2_proc.null_count().sum_horizontal().item()}")
 
-    # 4. Comparación de Contenido
     if df1_proc.shape == df2_proc.shape and not dtype_mismatches and same_cols:
         compare_content(df1_proc, df2_proc, common_cols, tol)
     else:
@@ -222,19 +169,11 @@ def compare_polars_dataframes(df1, df2, **kwargs):
 
     return df1_proc, df2_proc
 
+
+# ==================== MAIN FUNCTIONS ====================
+
 def df_walker(tables_list, dw_data_dir, raw_data_dir, dw_pattern="*.parquet", raw_pattern="*.csv"):
-    """
-    Itera sobre la lista de tablas configuradas y ejecuta la comparación.
-
-    Busca los archivos correspondientes en los directorios dados y lanza la comparación.
-
-    Args:
-        tables_list (dict): Diccionario con la configuración de tablas.
-        dw_data_dir (pathlib.Path): Directorio de datos del Data Warehouse.
-        raw_data_dir (pathlib.Path): Directorio de datos crudos.
-        dw_pattern (str): Patrón de búsqueda para archivos DW.
-        raw_pattern (str): Patrón de búsqueda para archivos Raw.
-    """
+    """Find configured raw and DW tables and run their comparisons."""
     if type(dw_data_dir) is not pathlib.PosixPath:
         dw_data_dir = pathlib.Path(dw_data_dir)
     if type(raw_data_dir) is not pathlib.PosixPath:
@@ -272,6 +211,8 @@ def df_walker(tables_list, dw_data_dir, raw_data_dir, dw_pattern="*.parquet", ra
                                                   df1_col_sort=tables_list[table]['dw_sort_col'] if 'dw_sort_col' in tables_list[table] else None,
                                                   df2_col_sort=tables_list[table]['raw_sort_col'] if 'raw_sort_col' in tables_list[table] else None
                                                   )
+
+# ==================== EXECUTION ====================
 
 if __name__ == "__main__":
     df_walker(TABLES_LIST, DW_DATA_DIR, RAW_DATA_DIR, dw_pattern="*.parquet", raw_pattern="*.csv")

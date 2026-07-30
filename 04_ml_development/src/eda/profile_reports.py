@@ -1,4 +1,6 @@
-"""Generate fg-data-profiling HTML reports from local DW parquet files."""
+"""HTML profile report generation for local DW parquet files."""
+
+# ==================== IMPORTS ====================
 
 from __future__ import annotations
 
@@ -18,11 +20,16 @@ import pyarrow.parquet as pq
 from common.config import configured_path, find_parquet_files, load_config
 
 
+# ==================== CONFIGURATION ====================
+
 DEFAULT_SAMPLE_SIZE = 100_000
 DEFAULT_RANDOM_STATE = 42
 
 
+# ==================== HELPER FUNCTIONS ====================
+
 def python_compatibility_note() -> str:
+    """Return installation guidance for unsupported Python versions."""
     if sys.version_info < (3, 14):
         return ""
 
@@ -35,6 +42,7 @@ def python_compatibility_note() -> str:
 
 
 def load_profile_report_class() -> Any:
+    """Import and return the profiling class with actionable errors."""
     try:
         from data_profiling import ProfileReport
     except ImportError as error:
@@ -57,6 +65,7 @@ def load_profile_report_class() -> Any:
 
 
 def parse_args() -> argparse.Namespace:
+    """Parse command-line arguments for profile report generation."""
     parser = argparse.ArgumentParser(
         description="Generate fg-data-profiling HTML reports for DW parquet files."
     )
@@ -105,6 +114,7 @@ def parse_args() -> argparse.Namespace:
 
 
 def read_profile_dataframe(path: Path, full: bool, sample_size: int, random_state: int) -> pd.DataFrame:
+    """Read a full parquet file or build a reproducible bounded sample."""
     parquet_file = pq.ParquetFile(path)
     total_rows = parquet_file.metadata.num_rows
 
@@ -148,6 +158,7 @@ def generate_report(
     random_state: int,
     profile_report_cls: Any,
 ) -> Path:
+    """Generate and persist one HTML profile report."""
     print(f"Generating profile for {path.name}")
     df = read_profile_dataframe(
         path=path,
@@ -167,7 +178,10 @@ def generate_report(
     return output_path
 
 
+# ==================== MAIN FUNCTIONS ====================
+
 def main() -> int:
+    """Generate reports for the selected tables and return an exit code."""
     args = parse_args()
     if args.sample_size <= 0:
         print("--sample-size must be greater than zero.", file=sys.stderr)
@@ -217,6 +231,8 @@ def main() -> int:
 
     return 0 if generated else 1
 
+
+# ==================== EXECUTION ====================
 
 if __name__ == "__main__":
     raise SystemExit(main())

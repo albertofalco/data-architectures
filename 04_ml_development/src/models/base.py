@@ -1,5 +1,7 @@
 """Model adapter contracts and factory."""
 
+# ==================== IMPORTS ====================
+
 from __future__ import annotations
 
 from pathlib import Path
@@ -7,6 +9,8 @@ from typing import Protocol
 
 import numpy as np
 
+
+# ==================== MAIN CLASSES ====================
 
 class ModelAdapter(Protocol):
     """Common interface for all model families."""
@@ -22,13 +26,15 @@ class ModelAdapter(Protocol):
         ...
 
     def predict_proba(self, X) -> np.ndarray:
-        """Predict positive-class probabilities or class probabilities."""
+        """Return class probability estimates for the supplied features."""
         ...
 
     def save(self, path: Path) -> Path:
         """Persist the model artifact."""
         ...
 
+
+# ==================== MAIN FUNCTIONS ====================
 
 def make_model(model_name: str, config: dict) -> ModelAdapter:
     """Create a model adapter by name."""

@@ -1,5 +1,7 @@
 """Mitra foundation model adapter."""
 
+# ==================== IMPORTS ====================
+
 from __future__ import annotations
 
 from pathlib import Path
@@ -9,12 +11,15 @@ import pandas as pd
 from common.config import resolve_project_path
 
 
+# ==================== MAIN CLASSES ====================
+
 class MitraModel:
     """AutoGluon Mitra classifier adapter."""
 
     name = "mitra"
 
     def __init__(self, config: dict):
+        """Initialize the AutoGluon adapter and retain its configuration."""
         try:
             from autogluon.tabular import TabularPredictor
         except ImportError as error:
@@ -33,11 +38,13 @@ class MitraModel:
         return pd.DataFrame(X)
 
     def _limit_features(self, X: pd.DataFrame) -> pd.DataFrame:
+        """Restrict features to the fitted Mitra feature limit."""
         if self.feature_limit is None:
             return X
         return X.iloc[:, : self.feature_limit]
 
     def fit(self, X, y):
+        """Fit a binary Mitra predictor and return this adapter."""
         target = self.config.get("ml_pipeline", {}).get("target", "TARGET")
         params = self.config.get("ml_pipeline", {}).get("models", {}).get("mitra", {})
         self.feature_limit = params.get("feature_limit", None)
@@ -67,12 +74,15 @@ class MitraModel:
         return self
 
     def predict(self, X):
+        """Predict class labels after applying the fitted feature limit."""
         return self.predictor.predict(self._limit_features(self._as_dataframe(X))).to_numpy()
 
     def predict_proba(self, X):
+        """Predict class probabilities after applying the feature limit."""
         return self.predictor.predict_proba(self._limit_features(self._as_dataframe(X))).to_numpy()
 
     def save(self, path: Path) -> Path:
+        """Return the AutoGluon artifact directory for the fitted model."""
         if self.predictor is None:
             raise RuntimeError("Cannot save an unfitted Mitra model.")
         return Path(self.predictor.path)

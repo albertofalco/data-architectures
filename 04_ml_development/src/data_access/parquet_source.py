@@ -1,5 +1,7 @@
 """Parquet implementation of feature table access."""
 
+# ==================== IMPORTS ====================
+
 from __future__ import annotations
 
 from pathlib import Path
@@ -7,10 +9,13 @@ from pathlib import Path
 import polars as pl
 
 
+# ==================== MAIN CLASSES ====================
+
 class ParquetFeatureSource:
     """Load DW report tables from local parquet files."""
 
     def __init__(self, data_dir: Path):
+        """Initialize the source with its parquet data directory."""
         self.data_dir = data_dir
 
     def load_table(
@@ -20,7 +25,7 @@ class ParquetFeatureSource:
         entity_ids: list[int | str] | None = None,
         entity_key: str | None = None,
     ) -> pl.LazyFrame:
-        """Load a parquet table by stem or filename."""
+        """Load a parquet table, resolving `rep_` aliases and optional row filters."""
         stem = Path(table_name).stem
         candidates = [self.data_dir / f"{stem}.parquet"]
         if not stem.startswith("rep_"):

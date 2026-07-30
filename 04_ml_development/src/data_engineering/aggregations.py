@@ -1,11 +1,15 @@
 """Reusable table aggregation functions."""
 
+# ==================== IMPORTS ====================
+
 from __future__ import annotations
 
 import polars as pl
 
 from data_engineering.schemas import TECHNICAL_COLUMNS, feature_name
 
+
+# ==================== CONFIGURATION ====================
 
 NUMERIC_DTYPES = {
     pl.Int8,
@@ -20,6 +24,8 @@ NUMERIC_DTYPES = {
     pl.Float64,
 }
 
+
+# ==================== HELPER FUNCTIONS ====================
 
 def _numeric_columns(frame: pl.LazyFrame, key: str, excluded: set[str]) -> list[str]:
     """Get numeric columns from the frame, excluding technical columns and the key."""
@@ -40,6 +46,8 @@ def _categorical_columns(frame: pl.LazyFrame, key: str, excluded: set[str]) -> l
         if dtype == pl.String and name not in excluded and name != key
     ]
 
+
+# ==================== MAIN FUNCTIONS ====================
 
 def aggregate_by_key(
     frame: pl.LazyFrame,
@@ -77,7 +85,7 @@ def aggregate_bureau_balance(
     entity_key: str,
     prefix: str,
 ) -> pl.LazyFrame:
-    """Aggregate bureau balance through bureau so the output is keyed by SK_ID_CURR."""
+    """Aggregate bureau balance through bureau using the configured entity key."""
     balance_by_bureau = aggregate_by_key(balance, key=bridge_key, prefix=f"{prefix}_by_bureau")
     bridge = bureau.select([entity_key, bridge_key]).unique()
     joined = bridge.join(balance_by_bureau, on=bridge_key, how="left")

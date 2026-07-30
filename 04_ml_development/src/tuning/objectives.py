@@ -1,5 +1,7 @@
 """Optuna objective factories."""
 
+# ==================== IMPORTS ====================
+
 from __future__ import annotations
 
 import time
@@ -13,12 +15,15 @@ from preprocessing.split import train_validation_test_split
 from training.evaluate_model import evaluate_adapter
 
 
+# ==================== MAIN FUNCTIONS ====================
+
 def objective_for_model(model_name: str, df, config: dict[str, Any]):
     """Create a simple validation PR-AUC objective for supported local models."""
     X, y = split_features_target(df, config=config, require_target=True)
     X_train, X_val, _, y_train, y_val, _ = train_validation_test_split(X, y, config)
 
     def objective(trial):
+        """Evaluate one trial and return its validation PR-AUC."""
         trial_config = dict(config)
         ml_config = dict(config.get("ml_pipeline", {}))
         models_config = dict(ml_config.get("models", {}))

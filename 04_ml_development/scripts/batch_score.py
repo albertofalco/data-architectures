@@ -1,5 +1,7 @@
 """CLI wrapper for production batch scoring."""
 
+# ==================== IMPORTS ====================
+
 from __future__ import annotations
 
 import argparse
@@ -14,8 +16,10 @@ from common.config import load_config
 from scoring.batch_score import batch_score
 
 
+# ==================== HELPER FUNCTIONS ====================
+
 def parse_args() -> argparse.Namespace:
-    """Parse command-line arguments."""
+    """Parse command-line arguments for batch scoring."""
     parser = argparse.ArgumentParser(description="Run production-style batch scoring.")
     parser.add_argument("--source", choices=["parquet", "clickhouse"], default="clickhouse")
     parser.add_argument("--model-uri", type=Path, required=True)
@@ -26,8 +30,10 @@ def parse_args() -> argparse.Namespace:
     return parser.parse_args()
 
 
+# ==================== MAIN FUNCTIONS ====================
+
 def main() -> int:
-    """Main entry point."""
+    """Score a batch, persist its predictions, and return a success code."""
     args = parse_args()
     entity_id_values = None
     if args.entity_ids_csv is not None:
@@ -44,6 +50,8 @@ def main() -> int:
     print(f"Predictions written to {output_path}")
     return 0
 
+
+# ==================== EXECUTION ====================
 
 if __name__ == "__main__":
     raise SystemExit(main())

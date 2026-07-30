@@ -1,5 +1,7 @@
 """CLI wrapper for production benchmark runs."""
 
+# ==================== IMPORTS ====================
+
 from __future__ import annotations
 
 import argparse
@@ -13,8 +15,10 @@ from common.config import load_config
 from scoring.benchmark_production import benchmark_production
 
 
+# ==================== HELPER FUNCTIONS ====================
+
 def parse_args() -> argparse.Namespace:
-    """Parse command-line arguments."""
+    """Parse command-line arguments for the scoring benchmark."""
     parser = argparse.ArgumentParser(description="Benchmark production batch scoring.")
     parser.add_argument("--model-uri", type=Path, required=True)
     parser.add_argument("--source", choices=["parquet", "clickhouse"], default="clickhouse")
@@ -22,8 +26,10 @@ def parse_args() -> argparse.Namespace:
     return parser.parse_args()
 
 
+# ==================== MAIN FUNCTIONS ====================
+
 def main() -> int:
-    """Main entry point."""
+    """Run scoring benchmarks, persist the results, and return a success code."""
     args = parse_args()
     batch_sizes = [int(value) for value in args.batch_sizes.split(",") if value.strip()]
     output_path = benchmark_production(
@@ -35,6 +41,8 @@ def main() -> int:
     print(f"Benchmark written to {output_path}")
     return 0
 
+
+# ==================== EXECUTION ====================
 
 if __name__ == "__main__":
     raise SystemExit(main())

@@ -1,5 +1,7 @@
 """Hyperparameter tuning use case."""
 
+# ==================== IMPORTS ====================
+
 from __future__ import annotations
 
 import json
@@ -13,6 +15,8 @@ from common.config import configured_path
 from common.paths import feature_output_path
 from tuning.objectives import objective_for_model
 
+
+# ==================== CONFIGURATION ====================
 
 TABICL_GRID_SEARCH_SPACE = {
     "n_estimators": [2, 4, 8],
@@ -31,10 +35,13 @@ PYOD_AUTOENCODER_GRID_SEARCH_SPACE = {
 }
 
 
+# ==================== MAIN CLASSES ====================
+
 class GridTrial:
     """Small trial adapter for dependency-light grid search."""
 
     def __init__(self, number: int, params: dict[str, Any]):
+        """Initialize a trial with its sequence number and fixed parameters."""
         self.number = number
         self.params = params
         self.user_attrs: dict[str, Any] = {}
@@ -50,6 +57,8 @@ class GridTrial:
         """Store per-trial metrics in the same spirit as Optuna user attrs."""
         self.user_attrs[name] = value
 
+
+# ==================== MAIN FUNCTIONS ====================
 
 def tune_model(config: dict[str, Any], model_name: str, features_path: Path | None = None) -> Path:
     """Run Optuna tuning for a supported model family."""
@@ -90,6 +99,8 @@ def tune_model(config: dict[str, Any], model_name: str, features_path: Path | No
     )
     return output_path
 
+
+# ==================== HELPER FUNCTIONS ====================
 
 def _tune_grid(
     config: dict[str, Any],

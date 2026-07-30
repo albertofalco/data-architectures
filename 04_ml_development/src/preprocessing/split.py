@@ -1,5 +1,7 @@
 """Train/validation/test split helpers."""
 
+# ==================== IMPORTS ====================
+
 from __future__ import annotations
 
 from typing import Any
@@ -7,12 +9,14 @@ from typing import Any
 import pandas as pd
 
 
+# ==================== HELPER FUNCTIONS ====================
+
 def train_validation_test_split(
     X: pd.DataFrame,
     y: pd.Series,
     config: dict[str, Any],
 ) -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame, pd.Series, pd.Series, pd.Series]:
-    """Create stratified train, validation, and test splits."""
+    """Split data using configured sizes, random state, and optional stratification."""
     from sklearn.model_selection import train_test_split
 
     ml_config = config.get("ml_pipeline", {})

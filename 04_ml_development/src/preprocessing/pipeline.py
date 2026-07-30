@@ -1,4 +1,6 @@
-"""Build sklearn preprocessing pipelines."""
+"""Scikit-learn preprocessing pipeline factories."""
+
+# ==================== IMPORTS ====================
 
 from __future__ import annotations
 
@@ -10,8 +12,10 @@ from preprocessing.encoders import categorical_encoder
 from preprocessing.imputers import categorical_imputer, numeric_imputer
 
 
+# ==================== HELPER FUNCTIONS ====================
+
 def build_preprocessor(X: pd.DataFrame, config: dict[str, Any]):
-    """Build a ColumnTransformer for numeric and categorical inputs."""
+    """Build a transformer with imputation, numeric scaling, and categorical encoding."""
     from sklearn.compose import ColumnTransformer
     from sklearn.pipeline import Pipeline
     from sklearn.preprocessing import StandardScaler

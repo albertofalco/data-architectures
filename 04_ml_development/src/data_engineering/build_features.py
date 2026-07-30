@@ -1,5 +1,7 @@
 """Use case for building engineered features."""
 
+# ==================== IMPORTS ====================
+
 from __future__ import annotations
 
 from pathlib import Path
@@ -13,6 +15,8 @@ from data_access.parquet_source import ParquetFeatureSource
 from data_engineering.feature_builder import FeatureBuilder
 
 
+# ==================== HELPER FUNCTIONS ====================
+
 def make_source(source_name: str, config: dict[str, Any]):
     """Create a feature source adapter from a source name."""
     if source_name == "parquet":
@@ -22,13 +26,15 @@ def make_source(source_name: str, config: dict[str, Any]):
     raise ValueError(f"Unsupported source: {source_name}")
 
 
+# ==================== MAIN FUNCTIONS ====================
+
 def build_features(
     config: dict[str, Any],
     source_name: str = "parquet",
     output_path: Path | None = None,
     limit: int | None = None,
 ) -> Path:
-    """Build and persist engineered features."""
+    """Build and persist engineered features with construction metrics."""
     performance = PerformanceLogger()
     source = make_source(source_name, config)
     builder = FeatureBuilder(source=source, config=config)

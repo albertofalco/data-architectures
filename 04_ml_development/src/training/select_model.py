@@ -1,11 +1,15 @@
 """Model selection helpers."""
 
+# ==================== IMPORTS ====================
+
 from __future__ import annotations
 
 from pathlib import Path
 
 import pandas as pd
 
+
+# ==================== HELPER FUNCTIONS ====================
 
 def select_best_model(metrics_files: list[Path], metric: str = "test_pr_auc") -> pd.DataFrame:
     """Rank models from JSON metric files."""

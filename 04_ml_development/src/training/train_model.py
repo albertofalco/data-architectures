@@ -1,5 +1,7 @@
 """Training use case orchestration."""
 
+# ==================== IMPORTS ====================
+
 from __future__ import annotations
 
 from pathlib import Path
@@ -19,12 +21,14 @@ from training.evaluate_model import evaluate_adapter
 from training.model_registry import save_bundle
 
 
+# ==================== MAIN FUNCTIONS ====================
+
 def train_model(
     config: dict[str, Any],
     model_name: str,
     features_path: Path | None = None,
 ) -> Path:
-    """Train one model family and persist its complete inference bundle."""
+    """Train and evaluate a model, persist its bundle and metrics, and optionally track MLflow."""
     performance = PerformanceLogger()
     features_path = features_path or feature_output_path(config)
     df = pd.read_parquet(features_path)

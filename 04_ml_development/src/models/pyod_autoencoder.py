@@ -1,5 +1,7 @@
 """PyOD AutoEncoder anomaly detection adapter."""
 
+# ==================== IMPORTS ====================
+
 from __future__ import annotations
 
 from pathlib import Path
@@ -8,12 +10,15 @@ import joblib
 import numpy as np
 
 
+# ==================== MAIN CLASSES ====================
+
 class PyODAutoEncoderModel:
     """Semi-supervised PyOD AutoEncoder adapter for tabular anomaly scoring."""
 
     name = "pyod_autoencoder"
 
     def __init__(self, config: dict):
+        """Initialize the PyOD autoencoder from pipeline configuration."""
         try:
             from pyod.models.auto_encoder import AutoEncoder
         except ImportError as error:
@@ -35,6 +40,7 @@ class PyODAutoEncoderModel:
         )
 
     def fit(self, X, y):
+        """Fit the detector and capture the training score range."""
         X_fit = X
         if self.train_normals_only:
             y_array = np.asarray(y)
@@ -51,14 +57,17 @@ class PyODAutoEncoderModel:
         return self
 
     def predict(self, X):
+        """Predict binary anomaly labels for the supplied features."""
         return np.asarray(self.model.predict(X)).reshape(-1)
 
     def predict_proba(self, X):
+        """Return normalized anomaly scores as two-class probabilities."""
         scores = np.asarray(self.model.decision_function(X), dtype=float).reshape(-1)
         probabilities = self._scale_scores(scores)
         return np.column_stack([1.0 - probabilities, probabilities])
 
     def save(self, path: Path) -> Path:
+        """Persist the complete adapter and return its artifact path."""
         path.parent.mkdir(parents=True, exist_ok=True)
         joblib.dump(self, path)
         return path

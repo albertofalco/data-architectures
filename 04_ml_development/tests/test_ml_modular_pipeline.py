@@ -1,5 +1,7 @@
 """Unit tests for the modular ML pipeline layers."""
 
+# ==================== IMPORTS ====================
+
 from __future__ import annotations
 
 import sys
@@ -20,7 +22,10 @@ from preprocessing.column_selection import split_features_target
 from training.evaluate_model import positive_class_scores
 
 
+# ==================== TEST FUNCTIONS ====================
+
 def test_parquet_source_loads_rep_prefixed_table(tmp_path: Path) -> None:
+    """Load a report table through its unprefixed logical name."""
     path = tmp_path / "rep_application_train.parquet"
     pl.DataFrame({"SK_ID_CURR": [1], "TARGET": [0]}).write_parquet(path)
 
@@ -29,6 +34,7 @@ def test_parquet_source_loads_rep_prefixed_table(tmp_path: Path) -> None:
 
 
 def test_parquet_source_filters_entity_ids(tmp_path: Path) -> None:
+    """Filter parquet rows to the requested entity identifiers."""
     path = tmp_path / "rep_bureau.parquet"
     pl.DataFrame({"SK_ID_CURR": [1, 2, 3], "AMT": [10.0, 20.0, 30.0]}).write_parquet(path)
 
@@ -39,6 +45,7 @@ def test_parquet_source_filters_entity_ids(tmp_path: Path) -> None:
 
 
 def test_feature_builder_returns_one_row_per_entity(tmp_path: Path) -> None:
+    """Build a feature table containing one row per entity."""
     pl.DataFrame(
         {
             "SK_ID_CURR": [1, 2],
@@ -77,6 +84,7 @@ def test_feature_builder_returns_one_row_per_entity(tmp_path: Path) -> None:
 
 
 def test_split_features_target_excludes_target_and_technical_ids() -> None:
+    """Exclude the target and configured technical identifiers from features."""
     df = pd.DataFrame(
         {
             "SK_ID_CURR": [1, 2],
@@ -99,6 +107,7 @@ def test_split_features_target_excludes_target_and_technical_ids() -> None:
 
 
 def test_performance_logger_records_json(tmp_path: Path) -> None:
+    """Persist timing and derived throughput metrics as JSON."""
     logger = PerformanceLogger()
     with logger.timed("train_seconds"):
         sum(range(10))
@@ -110,22 +119,30 @@ def test_performance_logger_records_json(tmp_path: Path) -> None:
 
 
 def test_pyod_autoencoder_adapter_uses_normal_rows_and_scores(monkeypatch) -> None:
+    """Train the anomaly adapter on normal rows and expose class scores."""
+
     class FakeAutoEncoder:
+        """Provide a deterministic PyOD test double."""
+
         fitted_rows = None
 
         def __init__(self, **kwargs):
+            """Capture initialization arguments and initialize score state."""
             self.kwargs = kwargs
             self.decision_scores_ = None
 
         def fit(self, X):
+            """Record the fitted row count and fixed training scores."""
             FakeAutoEncoder.fitted_rows = len(X)
             self.decision_scores_ = pd.Series([0.1, 0.2, 0.3]).to_numpy()
             return self
 
         def predict(self, X):
+            """Return deterministic binary anomaly labels."""
             return pd.Series([0, 1, 0, 1]).to_numpy()[: len(X)]
 
         def decision_function(self, X):
+            """Return deterministic anomaly scores."""
             return pd.Series([0.1, 0.2, 0.3, 0.4]).to_numpy()[: len(X)]
 
     import types

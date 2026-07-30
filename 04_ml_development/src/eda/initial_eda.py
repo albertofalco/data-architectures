@@ -1,4 +1,6 @@
-"""Run initial EDA over local Data Warehouse parquet files."""
+"""Initial EDA workflow for local Data Warehouse parquet files."""
+
+# ==================== IMPORTS ====================
 
 from __future__ import annotations
 
@@ -25,6 +27,8 @@ import seaborn as sns
 from common.config import configured_path, find_parquet_files, load_config
 
 
+# ==================== CONFIGURATION ====================
+
 TARGET_COL = "TARGET"
 SUMMARY_FILENAME = "eda_summary.md"
 MAX_COLUMN_SUMMARY_ROWS = 120
@@ -33,7 +37,10 @@ MAX_TARGET_CORRELATION_ROWS = 10
 MAX_HEATMAP_COLUMNS = 60
 
 
+# ==================== HELPER FUNCTIONS ====================
+
 def parse_args() -> argparse.Namespace:
+    """Parse command-line arguments for the EDA workflow."""
     parser = argparse.ArgumentParser(
         description="Generate initial EDA summaries for DW parquet files."
     )
@@ -76,6 +83,7 @@ def parse_args() -> argparse.Namespace:
 
 
 def column_summary(df: pd.DataFrame) -> pd.DataFrame:
+    """Summarize data types, nulls, and unique values by column."""
     null_count = df.isna().sum()
     return pd.DataFrame(
         {
@@ -88,6 +96,7 @@ def column_summary(df: pd.DataFrame) -> pd.DataFrame:
 
 
 def low_variance_summary(df: pd.DataFrame) -> pd.DataFrame:
+    """Summarize variance and cardinality for numeric columns."""
     numeric_df = df.select_dtypes(include=[np.number])
     if numeric_df.empty:
         return pd.DataFrame(columns=["variance", "unique_count", "is_constant"])
@@ -110,6 +119,7 @@ def correlation_outputs(
     assets_dir: Path,
     target_col: str,
 ) -> dict[str, object]:
+    """Calculate numeric correlations and create a bounded heatmap."""
     numeric_df = df.select_dtypes(include=[np.number])
     if numeric_df.shape[1] < 2:
         return {
@@ -158,6 +168,7 @@ def correlation_outputs(
 
 
 def read_table(path: Path, sample_size: int | None, random_state: int) -> tuple[pd.DataFrame, bool]:
+    """Read a parquet table and optionally return a reproducible sample."""
     df = pd.read_parquet(path)
     if sample_size and sample_size > 0 and len(df) > sample_size:
         return df.sample(n=sample_size, random_state=random_state), True
@@ -171,6 +182,7 @@ def analyze_file(
     random_state: int,
     target_col: str,
 ) -> dict[str, object]:
+    """Analyze one parquet file and return its EDA results."""
     table_name = path.stem
     print(f"Analyzing {path.name}")
 
@@ -209,6 +221,7 @@ def dataframe_to_markdown(
 
 
 def relative_markdown_path(path: Path, start: Path) -> str:
+    """Return a POSIX-style relative path for a Markdown link."""
     return Path(os.path.relpath(path, start=start)).as_posix()
 
 
@@ -220,6 +233,7 @@ def append_dataframe_section(
     index_name: str | None = None,
     max_rows: int | None = None,
 ) -> None:
+    """Append a bounded DataFrame as a section in a Markdown report."""
     lines.extend([f"#### {title}", ""])
     if df.empty:
         lines.extend([empty_message, ""])
@@ -241,6 +255,7 @@ def write_run_summary(
     missing: list[str],
     target_col: str,
 ) -> Path:
+    """Write the combined EDA results to a Markdown summary."""
     output_dir.mkdir(parents=True, exist_ok=True)
     summary_path = output_dir / SUMMARY_FILENAME
     assets_dir = summary_path.with_suffix("")
@@ -311,7 +326,10 @@ def write_run_summary(
     return summary_path
 
 
+# ==================== MAIN FUNCTIONS ====================
+
 def main() -> int:
+    """Run EDA for the selected parquet tables and return an exit code."""
     args = parse_args()
     config = load_config()
     data_dir = args.data_dir or configured_path(config, "dw_data", "./data/dw_parquet/")
@@ -354,6 +372,8 @@ def main() -> int:
 
     return 0 if results else 1
 
+
+# ==================== EXECUTION ====================
 
 if __name__ == "__main__":
     raise SystemExit(main())

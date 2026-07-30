@@ -1,5 +1,7 @@
 """Performance timing utilities for training and production scoring."""
 
+# ==================== IMPORTS ====================
+
 from __future__ import annotations
 
 import json
@@ -11,6 +13,8 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Iterator
 
+
+# ==================== MAIN CLASSES ====================
 
 @dataclass
 class PerformanceLogger:
@@ -84,7 +88,7 @@ class PerformanceLogger:
             )
 
     def _cgroup_memory(self) -> dict[str, float | str]:
-        """Return Docker/container memory metrics when cgroup files are available."""
+        """Return cgroup v1 or v2 memory metrics when available."""
         current_path = Path("/sys/fs/cgroup/memory.current")
         max_path = Path("/sys/fs/cgroup/memory.max")
         if current_path.exists():
@@ -118,7 +122,7 @@ class PerformanceLogger:
         }
 
     def add_throughput(self, rows: int, total_seconds_metric: str) -> None:
-        """Add rows-per-second and average latency metrics."""
+        """Derive throughput and average latency from a stored duration metric."""
         seconds = float(self.metrics.get(total_seconds_metric, 0.0) or 0.0)
         self.metrics["rows_scored"] = rows
         self.metrics["rows_per_second"] = round(rows / seconds, 6) if seconds else 0.0

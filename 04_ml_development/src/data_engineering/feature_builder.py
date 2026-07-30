@@ -1,4 +1,6 @@
-"""Build model-ready feature tables from DW report tables."""
+"""Model-ready feature table construction from DW report tables."""
+
+# ==================== IMPORTS ====================
 
 from __future__ import annotations
 
@@ -11,11 +13,13 @@ from data_engineering.aggregations import aggregate_bureau_balance, aggregate_by
 from data_engineering.joins import left_join_features
 
 
+# ==================== MAIN CLASSES ====================
+
 class FeatureBuilder:
     """Create one-row-per-customer features from multiple DW tables."""
 
     def __init__(self, source: FeatureSource, config: dict[str, Any]):
-        """Initialize the FeatureBuilder with a feature source and configuration."""
+        """Initialize the source and configured entity, target, and base table names."""
         self.source = source
         self.config = config
         self.pipeline_config = config.get("ml_pipeline", {})
@@ -28,7 +32,7 @@ class FeatureBuilder:
         limit: int | None = None,
         entity_ids: list[int | str] | None = None,
     ) -> pl.LazyFrame:
-        """Build the full feature table as a lazy frame."""
+        """Build one row per entity by aggregating the configured feature tables."""
         base = self.source.load_table(
             self.base_table,
             limit=limit,
@@ -93,5 +97,5 @@ class FeatureBuilder:
         limit: int | None = None,
         entity_ids: list[int | str] | None = None,
     ) -> pl.DataFrame:
-        """Build and collect the feature table."""
+        """Build and materialize the feature table as a Polars DataFrame."""
         return self.build(limit=limit, entity_ids=entity_ids).collect()

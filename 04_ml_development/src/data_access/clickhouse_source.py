@@ -1,5 +1,7 @@
 """ClickHouse implementation of feature table access."""
 
+# ==================== IMPORTS ====================
+
 from __future__ import annotations
 
 import os
@@ -9,11 +11,13 @@ import polars as pl
 from dotenv import load_dotenv
 
 
+# ==================== MAIN CLASSES ====================
+
 class ClickHouseFeatureSource:
     """Load DW report tables from ClickHouse for production batch scoring."""
 
     def __init__(self, database: str | None = None):
-        """Initialize the ClickHouseFeatureSource."""
+        """Load connection settings from the environment with an optional database override."""
         load_dotenv()
         self.database = database or os.getenv("CLICKHOUSE_DATABASE", "data_arch_dw")
         self.host = os.getenv("CLICKHOUSE_HOST", "localhost")
@@ -22,7 +26,7 @@ class ClickHouseFeatureSource:
         self.password = os.getenv("CLICKHOUSE_PASSWORD", "")
 
     def _client(self):
-        """Create a ClickHouse client."""
+        """Create a ClickHouse client from the stored connection settings."""
         try:
             import clickhouse_connect
         except ImportError as error:
@@ -54,7 +58,7 @@ class ClickHouseFeatureSource:
         entity_ids: list[int | str] | None = None,
         entity_key: str | None = None,
     ) -> pl.LazyFrame:
-        """Load a table with an optional LIMIT for bounded production scoring."""
+        """Load a table as a lazy frame with optional entity filtering and row limiting."""
         query = f"SELECT * FROM {self.database}.{table_name}"
         if entity_ids is not None and entity_key is not None:
             if not entity_ids:

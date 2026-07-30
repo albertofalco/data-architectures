@@ -1,11 +1,15 @@
 """Column selection helpers."""
 
+# ==================== IMPORTS ====================
+
 from __future__ import annotations
 
 from typing import Any
 
 import pandas as pd
 
+
+# ==================== HELPER FUNCTIONS ====================
 
 def split_features_target(
     df: pd.DataFrame,
@@ -30,6 +34,6 @@ def split_features_target(
 
 
 def entity_ids(df: pd.DataFrame, config: dict[str, Any]) -> pd.Series | None:
-    """Return entity ids when present."""
+    """Return the configured entity key column, or None when absent."""
     key = config.get("ml_pipeline", {}).get("entity_key", "SK_ID_CURR")
     return df[key] if key in df.columns else None

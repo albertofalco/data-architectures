@@ -1,5 +1,7 @@
 """Configuration and path helpers for ML development scripts."""
 
+# ==================== IMPORTS ====================
+
 from __future__ import annotations
 
 from pathlib import Path
@@ -8,10 +10,14 @@ from typing import Any
 import yaml
 
 
+# ==================== CONFIGURATION ====================
+
 MODULE_DIR = Path(__file__).resolve().parents[2]
 BASE_DIR = MODULE_DIR.parent
 CONFIG_PATH = MODULE_DIR / "config.yml"
 
+
+# ==================== HELPER FUNCTIONS ====================
 
 def load_config(config_path: Path | None = None) -> dict[str, Any]:
     """Load the ML development YAML configuration."""
@@ -40,7 +46,7 @@ def normalize_table_name(table: str) -> str:
 
 
 def find_parquet_files(data_dir: Path, tables: list[str] | None = None) -> tuple[list[Path], list[str]]:
-    """Find parquet files, optionally filtering by table stem or filename."""
+    """Return matching parquet files and requested table names not found."""
     if not data_dir.exists():
         raise FileNotFoundError(f"Data directory not found: {data_dir}")
 

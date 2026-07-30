@@ -1,5 +1,7 @@
 """Optional MLflow integration helpers."""
 
+# ==================== IMPORTS ====================
+
 from __future__ import annotations
 
 from pathlib import Path
@@ -8,8 +10,10 @@ from typing import Any
 from common.config import configured_path
 
 
+# ==================== HELPER FUNCTIONS ====================
+
 def setup_mlflow(config: dict[str, Any]) -> Any | None:
-    """Configure MLflow if the dependency is available."""
+    """Configure the tracking directory and experiment, or return None without MLflow."""
     try:
         import mlflow
     except ImportError:
@@ -27,7 +31,7 @@ def setup_mlflow(config: dict[str, Any]) -> Any | None:
 
 
 def log_metrics(mlflow_module: Any | None, metrics: dict[str, Any]) -> None:
-    """Log numeric metrics to MLflow when available."""
+    """Log numeric metrics when an MLflow module is provided."""
     if mlflow_module is None:
         return
     for name, value in metrics.items():

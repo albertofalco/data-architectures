@@ -1,5 +1,7 @@
 """XGBoost model adapter."""
 
+# ==================== IMPORTS ====================
+
 from __future__ import annotations
 
 from pathlib import Path
@@ -7,12 +9,15 @@ from pathlib import Path
 import joblib
 
 
+# ==================== MAIN CLASSES ====================
+
 class XGBoostModel:
     """XGBClassifier adapter with CPU default and GPU-compatible config."""
 
     name = "xgboost"
 
     def __init__(self, config: dict):
+        """Initialize the classifier from pipeline configuration."""
         try:
             from xgboost import XGBClassifier
         except ImportError as error:
@@ -30,16 +35,20 @@ class XGBoostModel:
         )
 
     def fit(self, X, y):
+        """Fit the XGBoost classifier and return this adapter."""
         self.model.fit(X, y)
         return self
 
     def predict(self, X):
+        """Predict class labels for the supplied features."""
         return self.model.predict(X)
 
     def predict_proba(self, X):
+        """Predict class probabilities for the supplied features."""
         return self.model.predict_proba(X)
 
     def save(self, path: Path) -> Path:
+        """Persist the fitted classifier and return its artifact path."""
         path.parent.mkdir(parents=True, exist_ok=True)
         joblib.dump(self.model, path)
         return path

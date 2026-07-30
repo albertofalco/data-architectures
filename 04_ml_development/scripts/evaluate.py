@@ -1,5 +1,7 @@
 """CLI wrapper for evaluating a saved bundle on an engineered feature table."""
 
+# ==================== IMPORTS ====================
+
 from __future__ import annotations
 
 import argparse
@@ -18,16 +20,20 @@ from training.evaluate_model import evaluate_adapter
 from training.model_registry import load_bundle
 
 
+# ==================== HELPER FUNCTIONS ====================
+
 def parse_args() -> argparse.Namespace:
-    """Parse command line arguments."""
+    """Parse command-line arguments for model evaluation."""
     parser = argparse.ArgumentParser(description="Evaluate a saved model bundle.")
     parser.add_argument("--model-uri", "--run-id", dest="model_uri", type=Path, required=True)
     parser.add_argument("--features-path", type=Path, default=None)
     return parser.parse_args()
 
 
+# ==================== MAIN FUNCTIONS ====================
+
 def main() -> int:
-    """Main function."""
+    """Evaluate a model bundle, persist metrics, and return a success code."""
     args = parse_args()
     config = load_config()
     bundle = load_bundle(args.model_uri)
@@ -42,6 +48,8 @@ def main() -> int:
     print(f"Evaluation metrics written to {output_path}")
     return 0
 
+
+# ==================== EXECUTION ====================
 
 if __name__ == "__main__":
     raise SystemExit(main())
