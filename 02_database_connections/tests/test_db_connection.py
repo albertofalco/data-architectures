@@ -1,10 +1,6 @@
-"""
-Script para verificar la conexión a la base de datos.
-"""
+"""Verify MySQL connectivity through two supported database clients."""
 
-# ============================================================================
-# IMPORTACION DE LIBRERIAS
-# ============================================================================
+# ==================== IMPORTS ====================
 
 import os
 import sys
@@ -14,20 +10,15 @@ from pathlib import Path
 from dotenv import load_dotenv
 from sqlalchemy import create_engine, text
 
-# ============================================================================
-# CONFIGURACION DE VARIABLES
-# ============================================================================
+# ==================== CONFIGURATION ====================
 
 BASE_DIR = Path(__file__).resolve().parent.parent.parent
 load_dotenv(BASE_DIR / '.env')
 
-# ============================================================================
-# FUNCIONES
-# ============================================================================
+# ==================== HELPER FUNCTIONS ====================
 
 def mysql_connection():
-    """Establece y valida la conexión a la base de datos MySQL."""
-    # Conexión a la base de datos
+    """Validate MySQL connectivity with mysql-connector-python."""
     try:
         conn = mysql.connector.connect(
             host=os.getenv('DB_HOST'),
@@ -42,9 +33,6 @@ def mysql_connection():
             print("No se pudo conectar a la base de datos con mysql-connector-python.")
         
         query = "SELECT * FROM application_train"
-        # cursor = conn.cursor()
-        # cursor.execute(query)
-        # tables = cursor.fetchall()
         df = pd.read_sql(query, conn)
         print(f"Número de filas en la tabla application_train: {len(df)}")
         
@@ -57,15 +45,13 @@ def mysql_connection():
         print("\nProceso finalizado con mysql-connector-python.")
 
 def sqlalchemy_connection():
-    # Conexión a la base de datos    
+    """Validate MySQL connectivity with SQLAlchemy."""
     try:
         engine = create_engine(f"mysql+mysqlconnector://{os.getenv('DB_USER')}:{os.getenv('DB_PASSWORD')}@{os.getenv('DB_HOST')}/{os.getenv('DB_NAME')}")
         with engine.connect() as connection:
             print("Conexión exitosa a la base de datos usando SQLAlchemy.")
 
             stmt = text("SELECT * FROM application_train")
-            # result = connection.execute(stmt)
-            # tables = result.fetchall()
             df = pd.read_sql(stmt, connection)
             print(f"Número de filas en la tabla application_train: {len(df)}")
     except Exception as e:
@@ -75,16 +61,16 @@ def sqlalchemy_connection():
         print("\nProceso finalizado con SQLAlchemy.")
 
 
+# ==================== MAIN FUNCTIONS ====================
+
 def main():
-    """Función principal para verificar la conexión a la base de datos."""
+    """Run both MySQL connection diagnostics."""
     print("Verificando conexión con mysql-connector-python...")
     mysql_connection()
     print("\nVerificando conexión con SQLAlchemy...")
     sqlalchemy_connection()
 
-# ============================================================================
-# EJECUCION PRINCIPAL
-# ============================================================================
+# ==================== EXECUTION ====================
 
 if __name__ == '__main__':
     main()

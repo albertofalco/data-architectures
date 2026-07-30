@@ -1,23 +1,22 @@
-"""
-Test Head CSV - Vista previa de archivos CSV
+"""Print HOUSETYPE_MODE_ID values from the normalized application_train CSV."""
 
-Script de prueba para leer y mostrar las primeras filas de un archivo CSV,
-especificamente la columna NAME_TYPE_SUITE del archivo previous_application.csv.
-Útil para verificar la estructura y contenido de los datos.
-"""
+# ==================== IMPORTS ====================
 
 from pathlib import Path
 import pandas as pd
 import csv
 import sys
 
-# Directorio donde se encuentra este script
+# ==================== CONFIGURATION ====================
+
+# Project and input paths.
 script_dir = Path(__file__).parent.resolve()
 
-# Directorio donde estan los datos de entrada
 data_dir = script_dir.parent.parent / "data" / "db_input"
 
-# Verificar que el archivo existe antes de intentar abrirlo
+# ==================== EXECUTION ====================
+
+# Require the normalized application_train CSV.
 csv_path = data_dir / "application_train" / "application_train.csv"
 if not csv_path.exists():
     print(f"ERROR: No se encontro el archivo: {csv_path}")

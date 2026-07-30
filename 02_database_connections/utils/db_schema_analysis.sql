@@ -1,6 +1,10 @@
--- 1. Resumen de Tablas
--- Este query proporciona un resumen de las tablas en la base de datos, incluyendo el nombre de la tabla, la cantidad de registros y la cantidad de columnas.
+-- Purpose: Report MySQL table, column, constraint, and index metadata for the configured schemas.
 
+-- Sections 1-4 inspect data_arch_prod; section 5 compares column and index metadata in data_arch_test.
+
+-- ==================== 1. TABLE SUMMARY ====================
+
+-- Summarize base table row estimates and column counts.
 SELECT
     table_name AS 'Tabla', 
     table_rows AS 'Cantidad de Registros', 
@@ -14,8 +18,9 @@ WHERE
     table_schema = 'data_arch_prod' 
     AND table_type = 'BASE TABLE';
 
--- 2. Detalle de Columnas (Tipos, Keys e Índices)
--- Este query proporciona un detalle de las columnas de cada tabla, incluyendo el tipo de dato, si es nullable, si es clave primaria o foránea, y el valor por defecto.
+-- ==================== 2. COLUMN DETAILS ====================
+
+-- Report column types, nullability, key indicators, and defaults.
 
 SELECT 
     c.table_name AS 'Tabla', 
@@ -32,8 +37,9 @@ WHERE
 ORDER BY 
     c.table_name, c.ordinal_position;
 
--- 3. Análisis de Claves Foráneas
--- Este query identifica las claves foráneas en la base de datos, mostrando la tabla y columna que las contiene, así como la tabla y columna a la que hacen referencia.
+-- ==================== 3. FOREIGN KEY ANALYSIS ====================
+
+-- Relate column metadata to key usage by schema, table, and column.
 SELECT 
     c.TABLE_NAME AS 'Tabla', 
     c.COLUMN_NAME AS 'Columna', 
@@ -60,41 +66,43 @@ WHERE
 ORDER BY 
     c.TABLE_NAME, c.ORDINAL_POSITION;
 
--- 4. Análisis de extras
--- Consulta las columnas de todas las tablas dentro del esquema especificado
+-- ==================== 4. COLUMN ATTRIBUTES ====================
+
+-- Inspect detailed column attributes in the production schema.
 
 USE data_arch_prod;
 SELECT 
-    TABLE_NAME AS 'Tabla',           -- Nombre de la tabla
-    COLUMN_NAME AS 'Columna',        -- Nombre de la columna
-    ORDINAL_POSITION AS 'Posición',  -- Orden de la columna dentro de la tabla
-    COLUMN_TYPE AS 'Tipo Detallado', -- Tipo de dato con longitud/precisión (ej: varchar(255), int(11))
-    IS_NULLABLE AS 'Nulable',        -- Indica si la columna permite valores NULL (YES/NO)
-    COLUMN_KEY AS 'Llave',           -- Tipo de llave: PRI (Primaria), UNI (Única), MUL (Indexada)
-    EXTRA AS 'Extra'                 -- Información adicional (ej: auto_increment)
+    TABLE_NAME AS 'Tabla',
+    COLUMN_NAME AS 'Columna',
+    ORDINAL_POSITION AS 'Posición',
+    COLUMN_TYPE AS 'Tipo Detallado',
+    IS_NULLABLE AS 'Nulable',
+    COLUMN_KEY AS 'Llave',           -- PRI is primary, UNI is unique, and MUL is indexed.
+    EXTRA AS 'Extra'
 FROM 
-    INFORMATION_SCHEMA.COLUMNS       -- Vista del diccionario de datos con metainformación de columnas
+    INFORMATION_SCHEMA.COLUMNS
 WHERE 
-    TABLE_SCHEMA = 'data_arch_prod'  -- Filtra solo las tablas de este esquema/base de datos
+    TABLE_SCHEMA = 'data_arch_prod'
 ORDER BY 
-    TABLE_NAME,                      -- Ordena primero por nombre de tabla
-    ORDINAL_POSITION;                -- Luego por posición de columna dentro de cada tabla
+    TABLE_NAME,
+    ORDINAL_POSITION;
 
 
--- 5. Diccionario de columnas + índices
--- Consulta las columnas de todas las tablas dentro del esquema especificado, incluyendo información sobre índices (si la columna forma parte de un índice y el tipo de índice)
+-- ==================== 5. COLUMN AND INDEX INVENTORY ====================
+
+-- Relate test-schema columns to index membership by schema, table, and column.
 USE data_arch_test;
 SELECT 
-    c.TABLE_NAME AS 'Tabla',           -- Nombre de la tabla
-    c.COLUMN_NAME AS 'Columna',        -- Nombre de la columna
-    c.ORDINAL_POSITION AS 'Posición',  -- Orden de la columna dentro de la tabla
-    c.COLUMN_TYPE AS 'Tipo Detallado', -- Tipo de dato con longitud/precisión
-    c.IS_NULLABLE AS 'Nulable',        -- Permite NULL (YES/NO)
-    c.COLUMN_KEY AS 'Llave',           -- PRI (Primaria), UNI (Única), MUL (Indexada)
-    c.EXTRA AS 'Extra',                -- Info adicional (ej: auto_increment)
-    s.INDEX_NAME AS 'Indice',          -- Nombre del índice
-    s.SEQ_IN_INDEX AS 'Orden en Indice', -- Posición de la columna dentro del índice
-    s.NON_UNIQUE AS 'Es Único'         -- 0 = Único, 1 = No único
+    c.TABLE_NAME AS 'Tabla',
+    c.COLUMN_NAME AS 'Columna',
+    c.ORDINAL_POSITION AS 'Posición',
+    c.COLUMN_TYPE AS 'Tipo Detallado',
+    c.IS_NULLABLE AS 'Nulable',
+    c.COLUMN_KEY AS 'Llave',           -- PRI is primary, UNI is unique, and MUL is indexed.
+    c.EXTRA AS 'Extra',
+    s.INDEX_NAME AS 'Indice',
+    s.SEQ_IN_INDEX AS 'Orden en Indice',
+    s.NON_UNIQUE AS 'Es Único'         -- 0 is unique; 1 is non-unique.
 FROM 
     INFORMATION_SCHEMA.COLUMNS c
 LEFT JOIN 
@@ -103,7 +111,7 @@ LEFT JOIN
    AND c.TABLE_NAME = s.TABLE_NAME
    AND c.COLUMN_NAME = s.COLUMN_NAME
 WHERE 
-    c.TABLE_SCHEMA = 'data_arch_test'  -- Cambia por tu esquema
+    c.TABLE_SCHEMA = 'data_arch_test'
 ORDER BY 
     c.TABLE_NAME, 
     c.ORDINAL_POSITION, 

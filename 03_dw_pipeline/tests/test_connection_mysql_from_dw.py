@@ -1,40 +1,36 @@
-"""
-Script de prueba de conexión desde ClickHouse hacia MySQL.
+"""Diagnose ClickHouse connectivity to MySQL through the MySQL engine."""
 
-Verifica que ClickHouse pueda usar el motor MySQL con las credenciales
-configuradas en .env. Es un test diagnóstico: imprime errores sin fallar pytest.
-"""
+# ==================== IMPORTS ====================
+
 import os
 
 import clickhouse_connect
 from dotenv import load_dotenv
 
-# Cargar variables de entorno
+# ==================== CONFIGURATION ====================
+
+# Load environment variables.
 load_dotenv()
 
 TEMP_DB = "test_mysql_engine_connection"
 
 
+# ==================== HELPER FUNCTIONS ====================
+
 def sql_string(value):
-    """
-    Escapa un valor para usarlo como literal string en una consulta ClickHouse.
-    """
+    """Escape a value for use as a ClickHouse string literal."""
     return str(value).replace("\\", "\\\\").replace("'", "\\'")
 
 
 def masked(value):
-    """
-    Enmascara credenciales para mostrarlas en logs diagnósticos.
-    """
+    """Mask a credential for diagnostic output."""
     if not value:
         return ""
     return "*" * 8
 
 
 def get_clickhouse_config():
-    """
-    Obtiene la configuración de conexión a ClickHouse desde variables de entorno.
-    """
+    """Return ClickHouse connection settings from environment variables."""
     host = os.getenv("CLICKHOUSE_HOST", "localhost")
     try:
         port = int(os.getenv("CLICKHOUSE_PORT", "8123"))
@@ -48,9 +44,7 @@ def get_clickhouse_config():
 
 
 def get_mysql_config():
-    """
-    Obtiene la configuración MySQL que ClickHouse usará con el motor MySQL.
-    """
+    """Return the MySQL settings used by the ClickHouse MySQL engine."""
     host = os.getenv("MYSQL_HOST_FOR_CH", "host.docker.internal")
     port = os.getenv("MYSQL_PORT", "3306")
     user = os.getenv("MYSQL_USER", "mysql-clickhouse")
@@ -60,10 +54,10 @@ def get_mysql_config():
     return host, port, user, password, database
 
 
+# ==================== MAIN FUNCTIONS ====================
+
 def test_connection_mysql_from_dw():
-    """
-    Intenta conectar ClickHouse a MySQL creando una base temporal con ENGINE MySQL.
-    """
+    """Test MySQL access through a temporary ClickHouse MySQL database."""
     ch_host, ch_port, ch_user, ch_password = get_clickhouse_config()
     mysql_host, mysql_port, mysql_user, mysql_password, mysql_database = get_mysql_config()
 
@@ -120,6 +114,8 @@ def test_connection_mysql_from_dw():
             except Exception as cleanup_error:
                 print(f"Cleanup failed: {cleanup_error}")
 
+
+# ==================== EXECUTION ====================
 
 if __name__ == "__main__":
     test_connection_mysql_from_dw()

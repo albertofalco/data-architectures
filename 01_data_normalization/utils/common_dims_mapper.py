@@ -1,40 +1,26 @@
-"""
-Mapeo de dimensiones comunes para columnas string/object compartidas entre tablas.
+"""Generate shared dimension value mappings from raw CSV files."""
 
-Este script identifica columnas que aparecen en multiples archivos CSV, Extrae
-los valores unicos de cada columna, los ordena y genera un archivo mappings.json
-con mapeos de valores a IDs enteros.
-
-Usage:
-    ./venv/bin/python 01_data_normalization/utils/common_dims_mapper.py
-"""
+# ==================== IMPORTS ====================
 
 import pandas as pd
 import json
 from pathlib import Path
 from collections import defaultdict
 
-# Directorio donde se encuentra el script y directorio de datos crudos
+# ==================== CONFIGURATION ====================
+
+# Project and raw data paths.
 SCRIPT_DIR = Path(__file__).parent
 RAW_DIR = SCRIPT_DIR.parent.parent / 'data' / 'raw'
 
-# Archivos a excluir del analisis (no son datos de entrenamiento)
+# Exclude files that are not training datasets.
 EXCLUDED_FILES = {'application_test.csv', 'HomeCredit_columns_description.csv', 'sample_submission.csv'}
 
 
+# ==================== HELPER FUNCTIONS ====================
+
 def get_column_mapping(raw_dir):
-    """
-    Analiza los archivos CSV y genera un mapeo de columnas a archivos.
-
-    Args:
-        raw_dir: Directorio que contiene los archivos CSV
-
-    Returns:
-        tuple: (file_columns, column_to_files, file_dtypes)
-        - file_columns: dict con nombres de archivos y sus columnas
-        - column_to_files: defaultdict que mapea nombres de columnas a archivos
-        - file_dtypes: dict con los tipos de datos de cada archivo
-    """
+    """Collect columns, source files, and inferred types from raw CSV files."""
     column_to_files = defaultdict(list)
     file_columns = {}
     file_dtypes = {}
@@ -55,17 +41,7 @@ def get_column_mapping(raw_dir):
 
 
 def get_common_string_columns(file_columns, column_to_files, file_dtypes):
-    """
-    Filtra columnas que aparecen en mas de un archivo y son de tipo string/object.
-
-    Args:
-        file_columns: dict con nombres de archivos y sus columnas
-        column_to_files: mapeo de columnas a archivos
-        file_dtypes: tipos de datos por archivo
-
-    Returns:
-        list: nombres de columnas que cumplen los criterios
-    """
+    """Return string columns shared by multiple raw CSV files."""
     common_string_cols = []
 
     for col, files in column_to_files.items():
@@ -80,17 +56,7 @@ def get_common_string_columns(file_columns, column_to_files, file_dtypes):
 
 
 def get_consolidated_unique_values(raw_dir, column, files):
-    """
-    Extrae valores unicos de una columna desde multiples archivos y los consolida.
-
-    Args:
-        raw_dir: Directorio de datos crudos
-        column: Nombre de la columna
-        files: Lista de archivos que contienen la columna
-
-    Returns:
-        list: Valores unicos ordenados (alfabetico o por orden especial para dias)
-    """
+    """Return sorted unique values for a column across raw CSV files."""
     all_values = set()
 
     for file_name in files:
@@ -101,7 +67,7 @@ def get_consolidated_unique_values(raw_dir, column, files):
             values = df[column].dropna().astype(str).unique()
             all_values.update(values)
 
-    # Orden especial para dias de la semana: lunes(1) a domingo(7)
+    # Preserve weekday order from Monday through Sunday.
     if column.upper() == 'WEEKDAY_APPR_PROCESS_START':
         day_order = {'MONDAY': 1, 'TUESDAY': 2, 'WEDNESDAY': 3, 'THURSDAY': 4, 'FRIDAY': 5, 'SATURDAY': 6, 'SUNDAY': 7}
         return sorted(all_values, key=lambda x: day_order.get(x, 999))
@@ -109,15 +75,10 @@ def get_consolidated_unique_values(raw_dir, column, files):
     return sorted(all_values)
 
 
-def main():
-    """
-    Funcion principal que ejecuta el proceso de mapeo.
+# ==================== MAIN FUNCTIONS ====================
 
-    1. Lee archivos CSV del directorio raw
-    2. Identifica columnas comunes de tipo string/object
-    3. Extrae y consolida valores unicos
-    4. Genera mappings.json con valores mapeados a IDs
-    """
+def main():
+    """Generate shared dimension mappings from raw CSV values."""
     raw_path = RAW_DIR.resolve()
 
     file_columns, column_to_files, file_dtypes = get_column_mapping(raw_path)
@@ -138,6 +99,8 @@ def main():
 
     print(f"Mapeos guardados en: {output_path}")
 
+
+# ==================== EXECUTION ====================
 
 if __name__ == '__main__':
     main()

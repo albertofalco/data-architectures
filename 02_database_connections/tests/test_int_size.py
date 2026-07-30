@@ -1,16 +1,6 @@
-"""
-Script para evaluar si las columnas de los archivos CSV requieren BigInteger.
+"""Identify normalized CSV columns that require MySQL BIGINT storage."""
 
-Este script analiza cada archivo CSV en el directorio de entrada y verifica si
-alguna columna numérica contiene valores que exceden el rango de un entero de 32 bits
-(-2,147,483,648 a 2,147,483,647).
-
-Las columnas identificadas se reportan como candidatas para usar BigInteger en la base de datos.
-"""
-
-# ============================================================================
-# IMPORTACION DE LIBRERIAS
-# ============================================================================
+# ==================== IMPORTS ====================
 
 import os
 import sys
@@ -19,42 +9,35 @@ import numpy as np
 from pathlib import Path
 from dotenv import load_dotenv
 
-# ============================================================================
-# CONFIGURACION DE VARIABLES
-# ============================================================================
+# ==================== CONFIGURATION ====================
 
 BASE_DIR = Path(__file__).resolve().parent.parent.parent
 load_dotenv(BASE_DIR / '.env')
 DATA_PATH = BASE_DIR / 'data' / 'db_input'
 
-# Límites de un entero de 32 bits (signed)
+# Signed 32-bit integer bounds.
 INT32_MIN = -2147483648
 INT32_MAX = 2147483647
 
-# ============================================================================
-# FUNCIONES
-# ============================================================================
+# ==================== HELPER FUNCTIONS ====================
 
 def check_bigint_candidates(df, filename):
-    """
-    Analiza un DataFrame para identificar columnas que requieren BigInteger.
-    """
+    """Return whether a DataFrame contains values requiring BIGINT."""
     bigint_candidates = []
     
-    # Iterar sobre las columnas numéricas
-    # Usamos select_dtypes para incluir enteros y flotantes (por si hay nulos representados como float)
+    # Include floating-point columns because nullable integers may be inferred as floats.
     numeric_cols = df.select_dtypes(include=['number']).columns
     
     for col in numeric_cols:
-        # Obtener min y max ignorando nulos
+        # Compute bounds while ignoring null values.
         min_val = df[col].min()
         max_val = df[col].max()
         
-        # Verificar si hay valores válidos (no todo NaN)
+        # Skip columns without valid numeric values.
         if pd.isna(min_val) or pd.isna(max_val):
             continue
 
-        # Verificar si excede los límites de 32 bits
+        # Record values outside the signed 32-bit range.
         if min_val < INT32_MIN or max_val > INT32_MAX:
             bigint_candidates.append({
                 'column': col,
@@ -73,9 +56,7 @@ def check_bigint_candidates(df, filename):
     return False
 
 def analyze_csv_files(dir_path):
-    """
-    Recorre los archivos CSV en el directorio y los analiza.
-    """
+    """Analyze CSV files recursively for BIGINT candidates."""
     if not dir_path.exists():
         raise FileNotFoundError(f"Error: La carpeta {dir_path} no existe.")
 
@@ -87,8 +68,7 @@ def analyze_csv_files(dir_path):
     for archivo in archivos:
         print(f"Analizando: {archivo.name}...", end='\r')
         try:
-            # Lectura con dtype_backend="numpy_nullable" como solicitado
-            # Esto permite enteros con nulos (Int64, etc.)
+            # Preserve nullable integer types while reading.
             df = pd.read_csv(archivo, dtype_backend="numpy_nullable")
             
             if check_bigint_candidates(df, archivo.name):
@@ -103,11 +83,10 @@ def analyze_csv_files(dir_path):
     else:
         print("✅ No se encontraron columnas que requieran BigInteger en los archivos analizados.")
 
-# ============================================================================
-# MAIN
-# ============================================================================
+# ==================== MAIN FUNCTIONS ====================
 
 def main():
+    """Run BIGINT candidate analysis for normalized CSV files."""
     print("Iniciando análisis de tipos de datos (BigInteger)...")
     
     try:
@@ -115,6 +94,8 @@ def main():
     except Exception as e:
         print(f"Error durante la ejecución: {e}")
         sys.exit(1)
+
+# ==================== EXECUTION ====================
 
 if __name__ == '__main__':
     main()

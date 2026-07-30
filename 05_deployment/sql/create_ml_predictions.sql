@@ -9,6 +9,6 @@ CREATE TABLE IF NOT EXISTS data_arch_dw.ml_predictions
     prediction_path String DEFAULT '',
     metrics_path String DEFAULT ''
 )
--- Cluster predictions by run, model, and entity for manifest-scoped reads.
+-- Cluster rows by run, model, and entity to support manifest-scoped reads.
 ENGINE = MergeTree()
 ORDER BY (run_id, model_name, SK_ID_CURR);

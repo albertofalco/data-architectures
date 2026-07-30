@@ -1,7 +1,6 @@
-"""
-Script de verificación de integridad de datos entre archivos CSV y tablas en ClickHouse.
-Compara estructura (columnas) y contenido (datos) de tablas raw con sus fuentes CSV.
-"""
+"""Compare raw CSV schemas and content with ClickHouse report tables."""
+
+# ==================== IMPORTS ====================
 
 import pandas as pd
 import numpy as np
@@ -15,24 +14,28 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
+# ==================== CONFIGURATION ====================
+
 pd.set_option("future.no_silent_downcasting", True)
 
 CONFIG_PATH = os.path.join(os.path.dirname(__file__), "config.yml")
 SRC_CONFIG_PATH = os.path.join(os.path.dirname(__file__), "../src/config.yml")
 DATA_RAW_PATH = os.path.join(os.path.dirname(os.path.dirname(__file__)), "..", "data", "raw")
 
+# ==================== HELPER FUNCTIONS ====================
+
 def load_config():
-    """Carga la configuración local de pruebas."""
+    """Load the local validation configuration."""
     with open(CONFIG_PATH, "r") as f:
         return yaml.safe_load(f)
 
 def load_src_config():
-    """Carga la configuración del pipeline fuente."""
+    """Load the source pipeline configuration."""
     with open(SRC_CONFIG_PATH, "r") as f:
         return yaml.safe_load(f)
 
 def get_db_client():
-    """Obtiene un cliente de conexión a ClickHouse."""
+    """Create and return a ClickHouse client."""
     host = os.getenv("CLICKHOUSE_HOST", "localhost")
     port = int(os.getenv("CLICKHOUSE_PORT", "8123") or 8123)
     user = os.getenv("CLICKHOUSE_USER", "default")
@@ -40,22 +43,22 @@ def get_db_client():
     return clickhouse_connect.get_client(host=host, port=port, username=user, password=password)
 
 def get_db_table_name(table_name):
-    """Retorna el nombre de la tabla de reporte correspondiente."""
+    """Return the report table name for a source table."""
     return f"rep_{table_name}"
 
 def quote_identifier(identifier):
-    """Escapa un identificador para ClickHouse."""
+    """Quote a ClickHouse identifier."""
     return f"`{identifier}`"
 
 def build_order_by_clause(columns):
-    """Construye un ORDER BY determinista y consistente con pandas."""
+    """Build deterministic ordering consistent with pandas."""
     if not columns:
         return ""
     order_cols = [f"{quote_identifier(col)} ASC NULLS FIRST" for col in columns]
     return f"ORDER BY {', '.join(order_cols)}"
 
 def normalize_null_values(df):
-    """Normaliza representaciones habituales de nulos antes de comparar."""
+    """Normalize common null representations before comparison."""
     df = df.replace({None: pd.NA})
     null_tokens = {"", "NA", "N/A", "NULL", "NAN"}
     for col in df.columns:
@@ -67,7 +70,7 @@ def normalize_null_values(df):
     return df
 
 def normalize_for_hash(df):
-    """Normaliza tipos y valores para generar hashes estables entre CSV y ClickHouse."""
+    """Normalize types and values for stable cross-system hashes."""
     df = normalize_null_values(df.copy())
     try:
         df = df.convert_dtypes(dtype_backend="numpy_nullable")
@@ -85,7 +88,7 @@ def normalize_for_hash(df):
     return df
 
 def compute_chunk_hash_cumulative(df, hasher):
-    """Actualiza un hash acumulativo con el contenido normalizado del DataFrame."""
+    """Update a cumulative hash with normalized DataFrame content."""
     df = normalize_for_hash(df)
     for col in df.columns:
         col_data = df[col].astype(object).fillna("NULL").to_numpy(dtype=str).tobytes()
@@ -93,7 +96,7 @@ def compute_chunk_hash_cumulative(df, hasher):
     return hasher
 
 def hash_dataframe_by_chunks(df, chunk_size):
-    """Calcula el hash de un DataFrame ya ordenado."""
+    """Hash an ordered DataFrame in chunks."""
     sha256 = hashlib.sha256()
     for pos in range(0, len(df), chunk_size):
         chunk = df.iloc[pos : pos + chunk_size].copy()
@@ -103,7 +106,7 @@ def hash_dataframe_by_chunks(df, chunk_size):
     return sha256.hexdigest()
 
 def hash_clickhouse_query_by_chunks(db_client, db_name, db_table, compare_cols, order_by_str, total_rows, chunk_size):
-    """Calcula el hash de una tabla ClickHouse paginada con orden determinista."""
+    """Hash a deterministically ordered ClickHouse table in chunks."""
     sha256 = hashlib.sha256()
     cols_str = ", ".join(quote_identifier(col) for col in compare_cols)
 
@@ -125,12 +128,10 @@ def hash_clickhouse_query_by_chunks(db_client, db_name, db_table, compare_cols, 
     print()
     return sha256.hexdigest()
 
+# ==================== MAIN FUNCTIONS ====================
+
 def check_table_integrity(table_info, config_data, src_config_data, db_client, method="hashing", schema_only=False):
-    """
-    Verifica la integridad de los datos entre el archivo CSV fuente y la tabla en ClickHouse.
-    
-    Compara conteo de filas y existencia de tabla.
-    """
+    """Compare table existence, row count, columns, and content with a source CSV."""
     table_name = table_info["name"]
     file_name = table_info["file_name"]
     
@@ -282,7 +283,7 @@ def check_table_integrity(table_info, config_data, src_config_data, db_client, m
         return False
 
 def check_db_connection():
-    """Verifica la conexión con ClickHouse."""
+    """Verify the ClickHouse connection."""
     try:
         client = get_db_client()
         client.command("SELECT 1")
@@ -291,7 +292,7 @@ def check_db_connection():
         return False, str(e)
 
 def parse_args():
-    """Parsea argumentos de línea de comandos."""
+    """Parse command-line arguments."""
     parser = argparse.ArgumentParser(
         description="Verifica integridad de tablas ClickHouse rep_* contra archivos CSV raw."
     )
@@ -316,7 +317,7 @@ def parse_args():
     return parser.parse_args()
 
 def main():
-    """Función principal de verificación de integridad."""
+    """Run integrity validation for the selected report tables."""
     args = parse_args()
 
     print("Verificando conexión con ClickHouse...")
@@ -383,6 +384,8 @@ def main():
     except Exception as e:
         print(f"\n[ERROR CRÍTICO] La ejecución falló: {e}")
         raise
+
+# ==================== EXECUTION ====================
 
 if __name__ == "__main__":
     main()

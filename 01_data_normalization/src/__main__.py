@@ -1,13 +1,6 @@
-"""
-Script de normalización de base de datos.
+"""Normalize configured raw CSV datasets and generate dimension tables."""
 
-Este script realiza operaciones de normalización de datos en múltiples datasets,
-aplicando transformaciones como:
-- Remapeo de valores usando mappings.json (dimensiones comunes)
-- Atomización de valores (Primera Forma Normal)
-- Creación de tablas de dimensiones para atributos categóricos
-- Exportación de datos normalizados a CSV
-"""
+# ==================== IMPORTS ====================
 
 import pandas as pd
 import numpy as np
@@ -16,12 +9,10 @@ import os
 import json
 from pathlib import Path
 
-# ============================================================================
-# FUNCIONES AUXILIARES
-# ============================================================================
+# ==================== HELPER FUNCTIONS ====================
 
 def convert_to_nullable_int(df):
-    """Convierte columnas float64 a Int64 nullable donde es posible."""
+    """Convert integral floating-point columns to nullable integers."""
     for col in df.columns:
         if df[col].dtype == 'float64':
             non_null = df[col].dropna()
@@ -31,7 +22,7 @@ def convert_to_nullable_int(df):
 
 
 def get_organization_type_2(org_type):
-    """Extrae el número de tipo de organización."""
+    """Extract the numbered organization type label from a value."""
     if pd.isna(org_type):
         return 'Type 0'
     
@@ -44,7 +35,7 @@ def get_organization_type_2(org_type):
 
 
 def clean_organization_type(org_type):
-    """Limpia el tipo de organización eliminando el patrón 'type X'."""
+    """Remove the numbered type suffix from an organization value."""
     if pd.isna(org_type):
         return org_type
     
@@ -59,18 +50,7 @@ def clean_organization_type(org_type):
 
 
 def load_mappings(mappings_path):
-    """
-    Carga el archivo mappings.json y lo convierte en un diccionario.
-    
-    Parameters:
-    -----------
-    mappings_path : Path
-        Ruta al archivo mappings.json
-    
-    Returns:
-    --------
-    dict : Diccionario con nombre de columna -> {valor: id}
-    """
+    """Load column value mappings from a JSON file."""
     with open(mappings_path, 'r') as f:
         mappings_list = json.load(f)
     
@@ -83,24 +63,7 @@ def load_mappings(mappings_path):
 
 
 def remap_with_mappings(csv_name, data_path, output_dir, mappings_dict):
-    """
-    Remapea valores usando mappings.json y crea tablas de dimensiones comunes.
-    
-    Parameters:
-    -----------
-    csv_name : str
-        Nombre del archivo CSV a procesar
-    data_path : Path
-        Ruta a los datos de entrada
-    output_dir : Path
-        Ruta base para guardar los datos de salida
-    mappings_dict : dict
-        Diccionario de mapeos cargado desde mappings.json
-    
-    Returns:
-    --------
-    tuple : (df procesado, lista de columnas procesadas)
-    """
+    """Apply common dimension mappings to one raw CSV dataset."""
     print(f"\n{'='*70}")
     print(f"Remapeando: {csv_name}")
     print(f"{'='*70}")
@@ -108,13 +71,13 @@ def remap_with_mappings(csv_name, data_path, output_dir, mappings_dict):
     df = pd.read_csv(data_path / csv_name)
     print(f"Dataset cargado: {df.shape[0]} filas, {df.shape[1]} columnas")
     
-    # 1NF - Atomización de ORGANIZATION_TYPE
+    # Split ORGANIZATION_TYPE into atomic 1NF values.
     if 'ORGANIZATION_TYPE' in df.columns:
         print("\nAplicando Primera Forma Normal (1NF) - Atomización de ORGANIZATION_TYPE")
         df['ORGANIZATION_TYPE_2'] = df['ORGANIZATION_TYPE'].apply(get_organization_type_2)
         df['ORGANIZATION_TYPE'] = df['ORGANIZATION_TYPE'].apply(clean_organization_type)
     
-    # Identificar columnas que están en mappings.json
+    # Identify columns configured in mappings.json.
     processed_columns = []
     
     for col_name, mapping in mappings_dict.items():
@@ -130,7 +93,7 @@ def remap_with_mappings(csv_name, data_path, output_dir, mappings_dict):
             
             processed_columns.append(col_name_upper)
     
-    # Guardar dataset principal
+    # Write the normalized primary dataset.
     ref_name = csv_name.replace('.csv', '')
     extract_dir = output_dir / ref_name
     
@@ -145,24 +108,7 @@ def remap_with_mappings(csv_name, data_path, output_dir, mappings_dict):
 
 
 def normalize_dataset_standard(csv_name, data_path, output_dir, exclude_columns=None):
-    """
-    Normaliza un dataset para columnas categóricas NO incluidas en mappings.json.
-    
-    Parameters:
-    -----------
-    csv_name : str
-        Nombre del archivo CSV a procesar
-    data_path : Path
-        Ruta a los datos de entrada
-    output_dir : Path
-        Ruta base para guardar los datos de salida
-    exclude_columns : list
-        Lista de columnas a excluir (ya procesadas con mappings.json)
-    
-    Returns:
-    --------
-    tuple : (df normalizado, diccionario de dimensiones)
-    """
+    """Normalize unmapped categorical columns into dimension tables."""
     if exclude_columns is None:
         exclude_columns = []
     
@@ -173,13 +119,13 @@ def normalize_dataset_standard(csv_name, data_path, output_dir, exclude_columns=
     df = pd.read_csv(data_path / csv_name)
     print(f"Dataset cargado: {df.shape[0]} filas, {df.shape[1]} columnas")
     
-    # 1NF - Atomización de ORGANIZATION_TYPE (solo si no existe ya ORGANIZATION_TYPE_2)
+    # Split ORGANIZATION_TYPE when it has not already been processed.
     if 'ORGANIZATION_TYPE' in df.columns and 'ORGANIZATION_TYPE_2' not in df.columns:
         print("\nAplicando Primera Forma Normal (1NF) - Atomización de ORGANIZATION_TYPE")
         df['ORGANIZATION_TYPE_2'] = df['ORGANIZATION_TYPE'].apply(get_organization_type_2)
         df['ORGANIZATION_TYPE'] = df['ORGANIZATION_TYPE'].apply(clean_organization_type)
     
-    # Crear tablas de dimensiones para columnas categóricas NO en exclude_columns
+    # Create dimension tables for unmapped categorical columns.
     print("\nCreando tablas de dimensiones...")
     
     categorical_columns = [
@@ -205,7 +151,7 @@ def normalize_dataset_standard(csv_name, data_path, output_dir, exclude_columns=
             
             print(f"  - {col}: {len(unique_values)} valores únicos")
     
-    # Guardar dataset principal
+    # Write the normalized primary dataset.
     ref_name = csv_name.replace('.csv', '')
     extract_dir = output_dir / ref_name
     
@@ -216,7 +162,7 @@ def normalize_dataset_standard(csv_name, data_path, output_dir, exclude_columns=
     df.to_csv(extract_dir / csv_name, index=False)
     print(f"\n✓ Dataset principal guardado: {csv_name}")
     
-    # Guardar tablas de dimensiones
+    # Write local dimension tables.
     for name, dim_df in dimension_tables.items():
         file_name = f'{name}.csv'
         dim_df.to_csv(extract_dir / file_name, index=False)
@@ -227,22 +173,24 @@ def normalize_dataset_standard(csv_name, data_path, output_dir, exclude_columns=
     return df, dimension_tables
 
 
+# ==================== MAIN FUNCTIONS ====================
+
 def main():
-    """Función principal que ejecuta la normalización de todos los datasets."""
+    """Normalize all configured raw datasets."""
     
     BASE_DIR = Path(__file__).resolve().parent
     data_path = BASE_DIR / ".." / ".." / "data" / "raw"
     output_dir = BASE_DIR / ".." / ".." / "data" / "db_input"
     mappings_path = BASE_DIR / ".." / "utils" / "mappings.json"
     
-    # Cargar mappings.json
+    # Load shared dimension mappings.
     mappings_dict = load_mappings(mappings_path)
     print(f"\nMappings cargados: {list(mappings_dict.keys())}")
     
-    # Normalizar claves del mapping a mayúsculas para comparar con columnas de dataframes
+    # Normalize mapping keys for case-sensitive column matching.
     mapping_columns = {k.upper(): v for k, v in mappings_dict.items()}
     
-    # Crear directorio common_dims y generar tablas de dimensiones desde mappings.json
+    # Generate shared dimension tables from configured mappings.
     common_dims_dir = output_dir / 'common_dims'
     if not os.path.exists(common_dims_dir):
         os.makedirs(common_dims_dir)
@@ -259,10 +207,10 @@ def main():
         dim_df.to_csv(common_dims_dir / dim_file_name, index=False)
         print(f"  ✓ {dim_file_name}: {len(dim_data)} valores")
     
-    # Todos los datasets a procesar
+    # Define candidate raw datasets.
     all_datasets = [
         'application_train.csv',
-        'application_test.csv',  # Incluido pero no procesado según indicación
+        'application_test.csv',
         'bureau_balance.csv',
         'bureau.csv',
         'credit_card_balance.csv',
@@ -271,10 +219,10 @@ def main():
         'previous_application.csv'
     ]
     
-    # Datasets excluidos explícitamente
+    # Exclude datasets that must not be normalized.
     excluded_files = ['application_test.csv']
     
-    # Determinar qué datasets tienen columnas del mappings.json
+    # Group datasets by whether they use shared mappings.
     datasets_with_mappings = []
     datasets_without_mappings = []
     mapping_columns_upper = list(mapping_columns.keys())
@@ -298,12 +246,9 @@ def main():
     print("NORMALIZACIÓN DE BASE DE DATOS - SCRIPT DE EJECUCIÓN")
     print("="*70)
     
-    # ========================================================================
-    # FASE 1: REMAPEO CON MAPPINGS.JSON
-    # ========================================================================
     print("\n--- FASE 1: REMAPEO CON MAPPINGS.JSON ---")
     
-    # Procesar datasets que tienen columnas del mappings.json
+    # Apply shared mappings in the first phase.
     for csv_name in datasets_with_mappings:
         try:
             remap_with_mappings(csv_name, data_path, output_dir, mappings_dict)
@@ -312,15 +257,12 @@ def main():
         except Exception as e:
             print(f"✗ Error procesando {csv_name}: {str(e)}")
     
-    # ========================================================================
-    # FASE 2: NORMALIZACIÓN ESTÁNDAR
-    # ========================================================================
     print("\n--- FASE 2: NORMALIZACIÓN ESTÁNDAR ---")
     
-    # Datasets procesados en Fase 1 (ya tienen el remapeo de mappings.json)
+    # Track datasets already written during the mapping phase.
     datasets_phase1 = ['application_train.csv', 'credit_card_balance.csv', 'POS_CASH_balance.csv', 'previous_application.csv']
     
-    # Todos los datasets a normalizar
+    # Define datasets for standard categorical normalization.
     all_datasets_to_normalize = [
         'application_train.csv',
         'bureau_balance.csv',
@@ -332,8 +274,7 @@ def main():
     ]
     
     for csv_name in all_datasets_to_normalize:
-        # Los datasets de Fase 1 ya fueron procesados, leer desde output_dir
-        # Los demás leer desde data_path (original)
+        # Read mapped datasets from output and all others from raw input.
         if csv_name in datasets_phase1:
             input_path = output_dir / csv_name.replace('.csv', '')
         else:
@@ -355,6 +296,8 @@ def main():
     print("NORMALIZACIÓN COMPLETADA")
     print("="*70 + "\n")
 
+
+# ==================== EXECUTION ====================
 
 if __name__ == '__main__':
     main()

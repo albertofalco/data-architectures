@@ -1,26 +1,6 @@
-"""
-Script para control de contenido de tablas reconstruidas en bases de datos respecto a archivos planos crudos (raw).
+"""Compare reconstructed MySQL tables with their original raw CSV files."""
 
-Este script verifica que los datos en la base de datos (incluso desglosados en tablas de dimensiones)
-mantienen la integridad de la fuente original. Realiza los JOINs necesarios para "desnormalizar" la BD
-antes de compararla con el archivo de la carpeta `data/raw`.
-
-Las pruebas incluyen:
-1. Validacion de la existencia de la tabla.
-2. Validacion de esquema (shape y columnas).
-3. Comparación de valores mediante reconstrucción (por hashing o pandas).
-
-Uso:
-python test_raw_db.py [--table NOMBRE_TABLA] [--method {hashing,pandas}] [--schema-only]
-
-Ejemplos:
-- Verificar todas las tablas (hashing por defecto):
-  python test_raw_db.py
-- Verificar solo estructura/esquema (sin leer todo el contenido):
-  python test_raw_db.py --schema-only
-- Verificar una tabla específica con método de pandas:
-  python test_raw_db.py --table application_train --method pandas
-"""
+# ==================== IMPORTS ====================
 
 import os
 import sys
@@ -33,7 +13,9 @@ from pathlib import Path
 from dotenv import load_dotenv
 from sqlalchemy import create_engine, text
 
-# --- CONFIGURACIÓN DE RUTAS ---
+# ==================== CONFIGURATION ====================
+
+# Project paths.
 CURRENT_DIR = Path(__file__).resolve().parent
 PROJECT_DIR = CURRENT_DIR.parent
 ROOT_DIR = PROJECT_DIR.parent
@@ -41,14 +23,16 @@ DATA_RAW_DIR = ROOT_DIR / 'data' / 'raw'
 KEYS_FILE = PROJECT_DIR / 'utils' / 'keys.json'
 ENV_FILE = ROOT_DIR / '.env'
 
-# Cargar variables de entorno
+# Load environment variables.
 load_dotenv(ENV_FILE)
 
-# Configuración de Pandas
+# Configure pandas behavior.
 pd.set_option('future.no_silent_downcasting', True)
 
+# ==================== HELPER FUNCTIONS ====================
+
 def get_db_engine():
-    """Crea la conexión a la base de datos usando variables de entorno."""
+    """Create a MySQL engine from environment variables."""
     user = os.getenv('DB_USER', 'root')
     password = os.getenv('DB_PASSWORD', '')
     host = os.getenv('DB_HOST', '127.0.0.1')
@@ -57,22 +41,21 @@ def get_db_engine():
     if not dbname:
         raise ValueError("La variable de entorno DB_NAME no está definida.")
         
-    # Usar mysql-connector como driver
+    # Use mysql-connector-python as the database driver.
     url = f"mysql+mysqlconnector://{user}:{password}@{host}/{dbname}"
     return create_engine(url)
 
 def load_keys():
-    """Carga los metadatos de las tablas desde keys.json y estandariza a minúsculas."""
+    """Load table key metadata indexed by lowercase table name."""
     if not KEYS_FILE.exists():
         raise FileNotFoundError(f"No se encontró el archivo de claves en {KEYS_FILE}")
     with open(KEYS_FILE, 'r') as f:
         keys_list = json.load(f)
-    # Estandarizamos los nombres de las tablas para que la búsqueda sea case-insensitive
-    # NOTA: Guardamos todo el objeto item porque test_raw_db.py necesita tanto 'pk' como 'fk'
+    # Preserve complete records because reconstruction needs both key types.
     return {item['table_name'].lower(): item for item in keys_list}
 
 def check_table_exists_in_db(engine, table_name):
-    """Verifica si una tabla existe en la base de datos (case-insensitive)."""
+    """Return whether a database table exists, ignoring case."""
     query = text("""
         SELECT TABLE_NAME
         FROM INFORMATION_SCHEMA.TABLES
@@ -83,7 +66,7 @@ def check_table_exists_in_db(engine, table_name):
         return result.fetchone() is not None
 
 def find_csv_for_table(data_dir, table_name):
-    """Busca el archivo CSV correspondiente a una tabla (case-insensitive)."""
+    """Find the CSV corresponding to a table, ignoring case."""
     table_name_lower = table_name.lower()
     for f in data_dir.glob('*.csv'):
         if f.stem.lower() == table_name_lower:
@@ -91,24 +74,22 @@ def find_csv_for_table(data_dir, table_name):
     return None
 
 def get_table_metadata(keys_data, table_name):
-    """Obtiene los metadatos (PKs, FKs) para una tabla específica (case-insensitive)."""
-    # Como keys_data ya es un dict en minúsculas, basta con hacer .get()
+    """Return key metadata for a table, ignoring case."""
+    # Key metadata is already indexed by lowercase table name.
     return keys_data.get(table_name.lower())
 
 def get_db_columns(engine, table_name):
-    """Obtiene la lista de columnas de una tabla en la base de datos."""
+    """Return the columns in a database table."""
     query = text(f"SELECT * FROM `{table_name}` LIMIT 0")
     with engine.connect() as conn:
         result = conn.execute(query)
         return list(result.keys())
 
 def verify_schema_and_shape(csv_path, table_name, engine, metadata, expected_columns, db_cols):
-    """
-    Realiza controles rápidos de columnas y cantidad de filas antes de comprobaciones profundas.
-    """
+    """Compare source CSV and reconstructed database columns and row counts."""
     print(f"--- [SCHEMA] Validando estructura de {table_name} ---")
     
-    # 1. Control de nombres/orden de columnas
+    # Compare reconstructed column names and order.
     query_reconstruction = build_reconstruction_query(table_name, expected_columns, db_cols, metadata)
     query_cols = text(f"{query_reconstruction} LIMIT 0")
     
@@ -122,7 +103,7 @@ def verify_schema_and_shape(csv_path, table_name, engine, metadata, expected_col
         return False
     print("✅ Columnas coinciden")
 
-    # 2. Control de Shape (Filas)
+    # Compare row counts.
     with open(csv_path, 'r', encoding='utf-8') as f:
         csv_rows = sum(1 for _ in f) - 1 # Restar header
         
@@ -138,34 +119,29 @@ def verify_schema_and_shape(csv_path, table_name, engine, metadata, expected_col
     return True
 
 def build_reconstruction_query(table_name, csv_columns, db_columns, metadata):
-    """
-    Construye una query SQL para reconstruir la tabla desnormalizada.
-    Realiza JOINs con las tablas dimensionales para reemplazar IDs por valores.
-    """
+    """Build a query that reconstructs dimension values in a source table."""
     selects = []
     joins = []
     joined_tables = set()
 
-    # Iterar sobre las columnas esperadas en el CSV (target)
+    # Build one projection for each expected source column.
     for col in csv_columns:
-        # CASO 1: La columna existe directamente en la tabla DB
+        # Select columns stored directly in the transaction table.
         if col in db_columns:
             selects.append(f"t.`{col}`")
         
-        # CASO 2: La columna es un valor que proviene de una dimensión
-        # (e.g. CSV tiene 'NAME_CONTRACT_TYPE', DB tiene 'NAME_CONTRACT_TYPE_ID')
+        # Reconstruct descriptive values stored in dimension tables.
         else:
-            fk_col = f"{col}_ID" # Asumimos convención estándar
+            fk_col = f"{col}_ID"
             if fk_col in db_columns and fk_col in metadata['fk']:
-                # Inferir nombre de tabla dimensión y columna valor
-                # FK: NAME_CONTRACT_TYPE_ID -> Dim Table: dim_name_contract_type -> Val: NAME_CONTRACT_TYPE
+                # Infer the dimension table from the foreign key convention.
                 dim_table = f"dim_{col.lower()}"
                 dim_alias = f"d_{col.lower()}"
                 
-                # Seleccionar el valor de la dimensión con el nombre original del CSV
+                # Preserve the original source column name.
                 selects.append(f"{dim_alias}.`{col}`")
                 
-                # Agregar JOIN si no se ha agregado ya
+                # Add each dimension join once.
                 if dim_table not in joined_tables:
                     joins.append(
                         f"LEFT JOIN `{dim_table}` {dim_alias} "
@@ -173,15 +149,16 @@ def build_reconstruction_query(table_name, csv_columns, db_columns, metadata):
                     )
                     joined_tables.add(dim_table)
             else:
-                # Si no se encuentra, seleccionar NULL o advertir (aquí seleccionamos NULL para no romper)
+                # Preserve the result shape when a column cannot be reconstructed.
                 print(f"   [WARN] Columna '{col}' no encontrada en DB ni reconstruible via FK.")
                 selects.append(f"NULL as `{col}`")
 
-    # Construir Query Final
+    # Assemble the reconstruction query.
     query = f"SELECT {', '.join(selects)} FROM `{table_name}` t {' '.join(joins)}"
     return query
 
 def compute_chunk_hash_cumulative(df, hasher):
+    """Update a cumulative hash with normalized DataFrame content."""
     try:
         df = df.convert_dtypes(dtype_backend="numpy_nullable")
     except Exception:
@@ -194,23 +171,26 @@ def compute_chunk_hash_cumulative(df, hasher):
         except Exception:
             pass
     for col in df.columns:
-        # Reemplazar NAs por un valor constante string para evitar que cambien de formato o sean ignorados
+        # Normalize null values before converting column content to bytes.
         col_data = df[col].astype(object).fillna("NULL").to_numpy(dtype=str).tobytes()
         hasher.update(col_data)
     return hasher
 
+# ==================== MAIN FUNCTIONS ====================
+
 def compare_table(engine, keys_data, csv_path, method="hashing", schema_only=False):
+    """Compare one raw CSV with its reconstructed MySQL table."""
     table_name_csv = csv_path.stem
-    table_name = table_name_csv.lower() # Convertir a minúsculas para coincidir con la DB
+    table_name = table_name_csv.lower()
     print(f"\n--- Procesando: {table_name_csv} (DB: {table_name}) ---")
     
-    # 1. Obtener Metadatos
+    # Load table key metadata.
     metadata = get_table_metadata(keys_data, table_name_csv)
     if not metadata:
         print(f"  ⚠️ Skipping: No hay metadatos en keys.json para {table_name_csv}")
         return
 
-    # 2. Leer cabeceras del CSV para saber qué columnas esperar
+    # Read the expected source columns.
     try:
         csv_header = pd.read_csv(csv_path, nrows=0)
         expected_columns = csv_header.columns.tolist()
@@ -218,7 +198,7 @@ def compare_table(engine, keys_data, csv_path, method="hashing", schema_only=Fal
         print(f"Error leyendo CSV {csv_path}: {e}")
         return
 
-    # 3. Construir Query de DB
+    # Build and validate the reconstruction query.
     try:
         db_cols = get_db_columns(engine, table_name)
         
@@ -235,18 +215,16 @@ def compare_table(engine, keys_data, csv_path, method="hashing", schema_only=Fal
         print(f"Error inspeccionando DB para {table_name}: {e}")
         return
 
-    # 4. Preparación del ordenamiento determinista
+    # Prepare deterministic ordering.
     pk_cols = metadata.get('pk', [])
     if not pk_cols:
         print(f"  ⚠️ PK no encontrada para {table_name}, omitiendo verificación de contenido...")
         return
         
-    # Ordenar por PKs + el resto de las columnas del RAW, para que coincida entre pandas y el query
+    # Sort by primary keys and remaining raw columns in both systems.
     sort_cols = pk_cols + [col for col in expected_columns if col not in pk_cols]
     
-    # IMPORTANTE: MySQL ejecutará el ORDER BY sobre los valores originales (t.columna),
-    # Solo podemos ordenar por las columnas que pertenecen a la tabla t (las de db_cols)
-    # para evitar que MySQL haga un filesort masivo sobre las dimensiones (JOINs).
+    # Order only by transaction columns to avoid large filesorts over joins.
     valid_db_order_cols = [c for c in sort_cols if c in db_cols]
     db_order_clause = ", ".join([f"t.`{c}`" for c in valid_db_order_cols])
 
@@ -256,16 +234,17 @@ def compare_table(engine, keys_data, csv_path, method="hashing", schema_only=Fal
         print(f"--- [HASH] Verificando {table_name} ---")
         
         def get_hash_csv():
+            """Return the hash of the fully ordered raw CSV."""
             sha256 = hashlib.sha256()
             print(f"  Cargando y ordenando CSV en memoria para hash...")
-            # Leer en chunk para memoria justa, aunque Pandas en 12GB debería soportar el archivo de ~700MB.
+            # Read in chunks to bound memory use.
             df_full_csv = pd.read_csv(csv_path, dtype_backend="numpy_nullable")
             
-            # Limpiezas específicas
+            # Apply source-specific cleanup.
             if table_name == "application_train" and "ORGANIZATION_TYPE" in df_full_csv.columns: 
                 df_full_csv = df_full_csv.drop(columns=["ORGANIZATION_TYPE"])
                 
-            # Igualamos comportamiento de MySQL (NULLs al inicio)
+            # Match MySQL ordering by placing null values first.
             valid_sort_cols = [c for c in sort_cols if c in df_full_csv.columns]
             df_full_csv = df_full_csv.sort_values(by=valid_sort_cols, na_position='first').reset_index(drop=True)
             
@@ -277,6 +256,7 @@ def compare_table(engine, keys_data, csv_path, method="hashing", schema_only=Fal
             return sha256.hexdigest()
 
         def get_hash_db():
+            """Return the hash of reconstructed database rows read in chunks."""
             sha256 = hashlib.sha256()
             offset = 0
             
@@ -311,7 +291,7 @@ def compare_table(engine, keys_data, csv_path, method="hashing", schema_only=Fal
         print(f"  Cargando y ordenando CSV completo en memoria...")
         df_full_csv = pd.read_csv(csv_path)
         
-        # Limpieza para application_train si aplica
+        # Apply application_train cleanup when needed.
         if table_name == "application_train" and "ORGANIZATION_TYPE" in df_full_csv.columns:
             df_full_csv = df_full_csv.drop(columns=["ORGANIZATION_TYPE"])
             
@@ -333,7 +313,7 @@ def compare_table(engine, keys_data, csv_path, method="hashing", schema_only=Fal
                         if "ORGANIZATION_TYPE" in df_db.columns: df_db = df_db.drop(columns=["ORGANIZATION_TYPE"])
                         if "ORGANIZATION_TYPE_2" in df_db.columns: df_db = df_db.drop(columns=["ORGANIZATION_TYPE_2"])
                     
-                    # Alinear columnas por si acaso los dropeos las desajustan
+                    # Realign columns after optional cleanup.
                     df_csv = df_csv[df_db.columns]
                     
                     df_db = df_db.astype(df_csv.dtypes)
@@ -352,6 +332,7 @@ def compare_table(engine, keys_data, csv_path, method="hashing", schema_only=Fal
             print(f"\n❌ Error durante la comparación: {e}")
 
 def main():
+    """Run raw CSV integrity checks against reconstructed MySQL tables."""
     parser = argparse.ArgumentParser(
         description="Verifica integridad de tablas MySQL reconstruidas contra archivos CSV fuente raw (crudos)."
     )
@@ -415,6 +396,8 @@ def main():
         compare_table(engine, keys_data, csv_file, method=args.method, schema_only=args.schema_only)
 
     print("\nValidación completada.")
+
+# ==================== EXECUTION ====================
 
 if __name__ == "__main__":
     main()

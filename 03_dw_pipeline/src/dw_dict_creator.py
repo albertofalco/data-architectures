@@ -1,42 +1,41 @@
-"""
-Script de creación de diccionarios en ClickHouse.
+"""Create ClickHouse dictionaries from staging dimension tables."""
 
-Este script genera diccionarios en ClickHouse basados en las tablas de dimensiones
-disponibles en la base de datos de staging (MySQL).
-"""
+# ==================== IMPORTS ====================
+
 import clickhouse_connect
 import yaml
 import os
 from dotenv import load_dotenv
 
-# Cargar variables de entorno
+# ==================== CONFIGURATION ====================
+
+# Load environment variables.
 load_dotenv()
 
-# Detalles de conexión a ClickHouse
+# ClickHouse connection settings.
 CH_HOST = os.getenv("CLICKHOUSE_HOST", "localhost")
 CH_PORT = int(os.getenv("CLICKHOUSE_PORT", "8123"))
 CH_USER = os.getenv("CLICKHOUSE_USER", "default")
 CH_PASSWORD = os.getenv("CLICKHOUSE_PASSWORD", "")
 
-# Detalles de conexión a MySQL (para fuente de diccionario)
+# MySQL settings used as the dictionary source.
 MYSQL_HOST = os.getenv("MYSQL_HOST_FOR_CH", "host.docker.internal")
 MYSQL_PORT = int(os.getenv("MYSQL_PORT", "3306"))
 MYSQL_USER = os.getenv("MYSQL_USER", "mysql-clickhouse")
 MYSQL_PASSWORD = os.getenv("MYSQL_PASSWORD", "")
 MYSQL_DB = os.getenv("MYSQL_DB", "data_arch_prod")
 
+# ==================== HELPER FUNCTIONS ====================
+
 def load_config():
-    """Carga la configuración desde el archivo YAML."""
+    """Load the pipeline configuration from YAML."""
     with open("03_dw_pipeline/src/config.yml", "r") as f:
         return yaml.safe_load(f)
 
+# ==================== MAIN FUNCTIONS ====================
+
 def create_dictionaries():
-    """
-    Crea diccionarios en ClickHouse para cada tabla de dimensión encontrada.
-    
-    Consulta los metadatos de las tablas en staging y genera las sentencias
-    CREATE DICTIONARY correspondientes.
-    """
+    """Create a ClickHouse dictionary for each staging dimension table."""
     config = load_config()
     staging_db = config["databases"]["staging_db"]
     storage_db = config["databases"]["storage_db"]
@@ -47,10 +46,10 @@ def create_dictionaries():
         print(f"Failed to connect to ClickHouse: {e}")
         return
 
-    # Obtener tablas de dimensiones desde staging
+    # Fetch dimension tables from staging.
     print(f"Fetching dimension tables from {staging_db}...")
     
-    # Consultar system.columns para obtener definiciones de tablas desde la base de datos con motor MySQL
+    # Read table definitions exposed by the MySQL-backed staging database.
     query = f"""
     SELECT table, name, type
     FROM system.columns
@@ -80,11 +79,10 @@ def create_dictionaries():
         tables[table_name].append({'name': col_name, 'type': col_type})
 
     for table_name, columns in tables.items():
-        # La primera columna es la PK
+        # Use the first column as the primary key.
         pk_col = columns[0]['name']
         
-        # Construir cadena de lista de columnas
-        # Asegurar que el tipo es compatible o utilizar el criterio de ClickHouse
+        # Build the ClickHouse dictionary column definition.
         col_list_str = ", ".join([f"{col['name']} {col['type']}" for col in columns])
         
         dict_name = f"dict_{table_name}"
@@ -113,6 +111,8 @@ def create_dictionaries():
             print(f"Dictionary {full_dict_name} created successfully.")
         except Exception as e:
             print(f"Error creating dictionary {full_dict_name}: {e}")
+
+# ==================== EXECUTION ====================
 
 if __name__ == "__main__":
     create_dictionaries()

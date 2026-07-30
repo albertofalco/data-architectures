@@ -1,10 +1,6 @@
-"""
-Backup de filas de tablas de base de datos a CSV.
+"""Export the latest configured MySQL table rows to backup CSV files."""
 
-Este script extrae los últimos N registros de tablas específicas de una base de datos
-MySQL y los guarda en archivos CSV en el directorio assets. La extracción se realiza
-ordenando por una columna especificada en orden descendente.
-"""
+# ==================== IMPORTS ====================
 
 import sys
 import os
@@ -14,20 +10,22 @@ from sqlalchemy import create_engine, inspect
 from dotenv import load_dotenv
 from pathlib import Path
 
-# Configuración de rutas
+# ==================== CONFIGURATION ====================
+
+# Project paths.
 CURRENT_DIR = Path(__file__).resolve().parent
 PROJECT_ROOT = CURRENT_DIR.parent.parent
 ASSETS_DIR = CURRENT_DIR.parent / "assets"
 ENV_PATH = PROJECT_ROOT / ".env"
 CONFIG_PATH = CURRENT_DIR / "config.yml"
 
-# Cargar variables de entorno
+# Load environment variables.
 if not ENV_PATH.exists():
     print(f"Error: No se encontró el archivo .env en {ENV_PATH}")
     sys.exit(1)
 load_dotenv(ENV_PATH)
 
-# Cargar configuración desde YAML
+# Load backup configuration from YAML.
 if not CONFIG_PATH.exists():
     print(f"Error: No se encontró el archivo de configuración en {CONFIG_PATH}")
     sys.exit(1)
@@ -43,13 +41,10 @@ except Exception as e:
     print(f"Error al leer la configuración: {e}")
     sys.exit(1)
 
+# ==================== HELPER FUNCTIONS ====================
+
 def get_db_connection():
-    """
-    Establece la conexión con la base de datos MySQL.
-    
-    Returns:
-        engine: Objeto de conexión SQLAlchemy engine.
-    """
+    """Create and return a SQLAlchemy engine for the configured MySQL database."""
     try:
         host = os.getenv("DB_HOST")
         user = os.getenv("DB_USER")
@@ -60,7 +55,7 @@ def get_db_connection():
              print("Error: Faltan variables de entorno para la conexión a BD.")
              sys.exit(1)
 
-        # Usar mysql-connector-python
+        # Use the mysql-connector-python driver.
         connection_url = f"mysql+mysqlconnector://{user}:{password}@{host}/{dbname}"
         print(f"\nConectando a la base de datos: {dbname}...\n")
         engine = create_engine(connection_url)
@@ -69,15 +64,13 @@ def get_db_connection():
         print(f"Error al configurar la conexión: {e}")
         sys.exit(1)
 
+# ==================== MAIN FUNCTIONS ====================
+
 def main():
-    """
-    Función principal que ejecuta el proceso de backup.
-    
-    Itera sobre las tablas configuradas y exporta los últimos N registros a CSV.
-    """
+    """Export the latest configured rows from each table to CSV."""
     engine = get_db_connection()
     
-    # Verificar conexión
+    # Verify the database connection.
     try:
         inspector = inspect(engine)
         existing_tables = inspector.get_table_names()
@@ -85,7 +78,7 @@ def main():
         print(f"Error al conectar con la base de datos: {e}")
         sys.exit(1)
 
-    # Crear directorio assets si no existe
+    # Create the backup directory when needed.
     if not ASSETS_DIR.exists():
         print(f"Creando directorio de assets: {ASSETS_DIR}")
         ASSETS_DIR.mkdir(parents=True, exist_ok=True)
@@ -98,8 +91,7 @@ def main():
             sys.exit(1)
             
         try:
-            # Obtener los últimos N registros (orden descendente)
-            # Nota: Ordenamos descendente para obtener los últimos, pero el dataframe tendrá ese orden.
+            # Fetch the latest rows, then restore ascending order in the CSV.
             query = f"SELECT * FROM {table_name} ORDER BY {order_col} DESC LIMIT {limit}"
             df = pd.read_sql(query, engine)
             df = df.sort_values(by=order_col, ascending=True)
@@ -108,15 +100,15 @@ def main():
                 print(f"Advertencia: No se encontraron registros para la tabla {table_name}.")
                 sys.exit(1)
                 
-            # Verificar cantidad
+            # Report incomplete backup batches.
             if len(df) < limit:
                 print(f"Advertencia: Se solicitaron {limit} registros, pero solo se encontraron {len(df)}.")
 
-            # Guardar en CSV
+            # Write the backup CSV.
             output_file = ASSETS_DIR / f"{table_name}.csv"
             df.to_csv(output_file, index=False)
             
-            # Obtener rango para feedback
+            # Report the exported identifier range.
             if order_col in df.columns:
                 min_id = df[order_col].min()
                 max_id = df[order_col].max()
@@ -131,6 +123,8 @@ def main():
         except Exception as e:
             print(f"Error durante el backup de {table_name}: {e}")
             sys.exit(1)
+
+# ==================== EXECUTION ====================
 
 if __name__ == "__main__":
     main()

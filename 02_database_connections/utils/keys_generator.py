@@ -1,34 +1,38 @@
-"""
-Generador de claves (PK/FK) basado en análisis de archivos CSV.
-Analiza la estructura de los archivos en data/db_input y genera keys.json.
-"""
+"""Generate primary and foreign key metadata from normalized CSV files."""
+
+# ==================== IMPORTS ====================
+
 import json
 from pathlib import Path
 import pandas as pd
 import sys
 
-# Define rutas base relativas a este script
-# keys_generator.py está en 02_database_connections/utils/
-# Necesitamos subir 3 niveles para llegar a la raíz: utils -> 02_database_connections -> root
+# ==================== CONFIGURATION ====================
+
+# Resolve project paths relative to this utility.
 BASE_DIR = Path(__file__).resolve().parent.parent.parent
 DATA_PATH = BASE_DIR / 'data' / 'db_input'
 OUTPUT_FILE = Path(__file__).resolve().parent / 'keys.json'
 
+# ==================== HELPER FUNCTIONS ====================
+
 def get_csv_headers(file_path):
-    """Lee solo la cabecera (primera fila) de un archivo CSV."""
+    """Return the column names from a CSV header."""
     try:
-        # Lee solo 0 filas para obtener encabezados
+        # Read no data rows because only the header is needed.
         df = pd.read_csv(file_path, nrows=0)
         return df.columns.tolist()
     except Exception as e:
         print(f"Error leyendo {file_path}: {e}")
         return []
 
+# ==================== MAIN FUNCTIONS ====================
+
 def generate_keys():
-    """Genera el archivo de metadatos de claves escaneando los CSVs."""
+    """Generate key metadata by scanning normalized CSV files."""
     print(f"Escaneando archivos CSV en: {DATA_PATH}")
     
-    # 1. Descubrimiento: Encuentra todos los archivos CSV recursivamente
+    # Discover normalized CSV files recursively.
     if not DATA_PATH.exists():
         print(f"Error: DATA PATH no existe: {DATA_PATH}")
         return []
@@ -39,7 +43,7 @@ def generate_keys():
     tables_metadata = []
     known_dim_pks = set()
 
-    # 2. Identifica tablas y PK de dimensiones
+    # Identify tables and their candidate primary keys.
     for f in all_files:
         table_name = f.stem
         is_dim = table_name.startswith('dim_')
@@ -47,13 +51,13 @@ def generate_keys():
         
         pk = []
         
-        # Regla para Dimensiones: PK contiene "ID"
+        # Dimension primary keys contain ID.
         if is_dim:
             pk = [col for col in columns if "ID" in col]
-            # Agregar al conjunto conocido para coincidencia de FK más tardecol]
+            # Retain dimension keys for later foreign key matching.
             known_dim_pks.update(pk)
         
-        # Regla para tablas de transacciones: PK contiene "SK" e "ID"
+        # Transaction primary keys contain both SK and ID.
         else:
             pk = [col for col in columns if "SK" in col and "ID" in col]
 
@@ -65,21 +69,17 @@ def generate_keys():
             'fk': []
         })
 
-    # 3. Identifica FKs en tablas principales basándose en PKs de dimensiones
-    # Logica FK: "La primary key creada va a ser la foreign key en las tablas de transacciones"
+    # Match transaction columns against known dimension primary keys.
     
     final_output = []
 
     for table in tables_metadata:
-        # FK logic: "La primary key creada va a ser la foreign key en las tablas de transacciones"
-        
         if not table['is_dim']:
-            # Para cada tabla principal, buscamos columnas que coincidan con los PKs de las dimensiones conocidas.
-            # Esto es una heurística simple: si una columna en la tabla principal coincide con un PK de dimensión, la consideramos FK.            
+            # Treat matching dimension keys as transaction foreign keys.
             fks = [col for col in table['columns'] if col in known_dim_pks and col not in table['pk']]
             table['fk'] = fks
         
-        # Construccion de objeto final para exportar
+        # Build the exported metadata record.
         final_output.append({
             "table_name": table['name'],
             "pk": table['pk'],
@@ -88,10 +88,12 @@ def generate_keys():
 
     return final_output
 
+# ==================== EXECUTION ====================
+
 if __name__ == "__main__":
     keys_data = generate_keys()
     
-    # Exportacion a JSON
+    # Export key metadata to JSON.
     try:
         with open(OUTPUT_FILE, 'w') as f:
             json.dump(keys_data, f, indent=4)

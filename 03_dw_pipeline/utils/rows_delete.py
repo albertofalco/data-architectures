@@ -1,9 +1,6 @@
-"""
-Eliminación de registros de tablas.
+"""Delete the latest configured rows from selected MySQL tables."""
 
-Este script elimina los últimos registros agregados a las tablas
-especificadas en el archivo de configuración config.yml.
-"""
+# ==================== IMPORTS ====================
 
 import sys
 import os
@@ -13,19 +10,21 @@ from sqlalchemy import create_engine, inspect, text
 from dotenv import load_dotenv
 from pathlib import Path
 
-# Configuración de rutas
+# ==================== CONFIGURATION ====================
+
+# Project paths.
 CURRENT_DIR = Path(__file__).resolve().parent
 PROJECT_ROOT = CURRENT_DIR.parent.parent
 ENV_PATH = PROJECT_ROOT / ".env"
 CONFIG_PATH = CURRENT_DIR / "config.yml"
 
-# Cargar variables de entorno
+# Load environment variables.
 if not ENV_PATH.exists():
     print(f"Error: No se encontró el archivo .env en {ENV_PATH}")
     sys.exit(1)
 load_dotenv(ENV_PATH)
 
-# Cargar configuración desde YAML
+# Load deletion configuration from YAML.
 if not CONFIG_PATH.exists():
     print(f"Error: No se encontró el archivo de configuración en {CONFIG_PATH}")
     sys.exit(1)
@@ -41,13 +40,10 @@ except Exception as e:
     print(f"Error al leer la configuración: {e}")
     sys.exit(1)
 
+# ==================== HELPER FUNCTIONS ====================
+
 def get_db_connection():
-    """
-    Establece la conexión con la base de datos MySQL.
-    
-    Returns:
-        engine: Objeto de conexión SQLAlchemy engine.
-    """
+    """Create and return a SQLAlchemy engine for the configured MySQL database."""
     try:
         host = os.getenv("DB_HOST")
         user = os.getenv("DB_USER")
@@ -66,16 +62,13 @@ def get_db_connection():
         print(f"Error al configurar la conexión: {e}")
         sys.exit(1)
 
+# ==================== MAIN FUNCTIONS ====================
+
 def main():
-    """
-    Función principal que ejecuta el proceso de eliminación.
-    
-    Muestra una vista previa de los registros a eliminar y solicita confirmación
-    antes de proceder.
-    """
+    """Preview and delete the latest configured rows after confirmation."""
     engine = get_db_connection()
     
-    # Verificar conexión
+    # Verify the database connection.
     try:
         inspector = inspect(engine)
         existing_tables = inspector.get_table_names()
@@ -91,7 +84,7 @@ def main():
             sys.exit(1)
             
         try:
-            # 1. Consultar el rango a eliminar para confirmación
+            # Query the identifier range before requesting confirmation.
             query_preview = f"SELECT {order_col} FROM {table_name} ORDER BY {order_col} DESC LIMIT {limit}"
             df_preview = pd.read_sql(query_preview, engine)
             
@@ -114,8 +107,7 @@ def main():
                 print("Operación cancelada por el usuario.")
                 sys.exit(0)
             
-            # 2. Ejecutar borrado
-            # MySQL permite ORDER BY y LIMIT en DELETE
+            # MySQL supports ORDER BY and LIMIT in DELETE statements.
             delete_query = text(f"DELETE FROM {table_name} ORDER BY {order_col} DESC LIMIT {limit}")
             
             with engine.begin() as conn:
@@ -125,6 +117,8 @@ def main():
         except Exception as e:
             print(f"Error durante el proceso de borrado de {table_name}: {e}")
             sys.exit(1)
+
+# ==================== EXECUTION ====================
 
 if __name__ == "__main__":
     main()

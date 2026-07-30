@@ -1,31 +1,32 @@
-"""
-Script de creación de tablas transaccionales en ClickHouse.
+"""Create ClickHouse transaction tables from staging table schemas."""
 
-Este script crea tablas en ClickHouse (Engine=MergeTree) replicando la estructura
-de las tablas fuente en MySQL (Staging), gestionando claves primarias y
-agregando columnas de identidad cuando es necesario.
-"""
+# ==================== IMPORTS ====================
+
 import clickhouse_connect
 import yaml
 import os
 from dotenv import load_dotenv
 
-# Cargar variables de entorno
+# ==================== CONFIGURATION ====================
+
+# Load environment variables.
 load_dotenv()
 
-# Detalles de conexión a ClickHouse
+# ClickHouse connection settings.
 CH_HOST = os.getenv("CLICKHOUSE_HOST", "localhost")
 CH_PORT = int(os.getenv("CLICKHOUSE_PORT", "8123"))
 CH_USER = os.getenv("CLICKHOUSE_USER", "default")
 CH_PASSWORD = os.getenv("CLICKHOUSE_PASSWORD", "")
 
+# ==================== HELPER FUNCTIONS ====================
+
 def load_config():
-    """Carga la configuración desde el archivo YAML."""
+    """Load the pipeline configuration from YAML."""
     with open("03_dw_pipeline/src/config.yml", "r") as f:
         return yaml.safe_load(f)
 
 def get_table_columns(client, database, table):
-    """Obtiene columnas y tipos de la tabla desde system.columns."""
+    """Return table column names and types from system.columns."""
     query = f"""
     SELECT name, type
     FROM system.columns
@@ -35,14 +36,10 @@ def get_table_columns(client, database, table):
     result = client.query(query)
     return [{'name': row[0], 'type': row[1]} for row in result.result_rows]
 
+# ==================== MAIN FUNCTIONS ====================
+
 def create_transaction_tables():
-    """
-    Crea las tablas transaccionales (hechos) en la base de datos de almacenamiento.
-    
-    Maneja dos opciones definidas en la configuración:
-    - Opción A: Tablas con PK definida.
-    - Opción B: Tablas sin PK (se genera _DW_ID).
-    """
+    """Create configured transaction tables in the storage database."""
     config = load_config()
     staging_db = config["databases"]["staging_db"]
     storage_db = config["databases"]["storage_db"]
@@ -53,8 +50,7 @@ def create_transaction_tables():
         print(f"Failed to connect to ClickHouse: {e}")
         return
 
-    # Procesar Opción A
-    # Opción A: Tablas con restricción de PRIMARY KEY creadas en la base de datos mysql.
+    # Process option A tables that have source primary keys.
     print("Processing Option A tables...")
     for table_info in config['transaction_tables']['option_a']:
         table_name = table_info['name']
@@ -67,11 +63,11 @@ def create_transaction_tables():
             
         col_defs = ", ".join([f"{col['name']} {col['type']}" for col in columns])
         
-        # Detectar claves primarias: todas las columnas que comienzan con 'SK_ID'
+        # Treat all SK_ID-prefixed columns as primary keys.
         pk_cols = [col['name'] for col in columns if col['name'].startswith('SK_ID')]
         
         if not pk_cols:
-            # Alternativa: usar primera columna si no se encuentra SK_ID (aunque inesperado para Opción A)
+            # Fall back to the first column when no SK_ID column is present.
             print(f"Warning: No 'SK_ID' columns found for {table_name}. Using first column as PK.")
             pk_col_str = columns[0]['name']
         else:
@@ -90,8 +86,7 @@ def create_transaction_tables():
         except Exception as e:
             print(f"Error creating table {table_name}: {e}")
 
-    # Procesar Opción B
-    # Opción B: Tablas sin restricción de PRIMARY KEY creadas en la base de datos mysql.
+    # Process option B tables that have no source primary key.
     print("Processing Option B tables...")
     for table_info in config['transaction_tables']['option_b']:
         table_name = table_info['name']
@@ -104,7 +99,7 @@ def create_transaction_tables():
             
         col_defs = ", ".join([f"{col['name']} {col['type']}" for col in columns])
         
-        # Agregar columna _DW_ID
+        # Add a synthetic _DW_ID column.
         create_query = f"""
         CREATE TABLE IF NOT EXISTS {storage_db}.{table_name}
         (
@@ -119,6 +114,8 @@ def create_transaction_tables():
             print(f"Table {storage_db}.{table_name} created.")
         except Exception as e:
             print(f"Error creating table {table_name}: {e}")
+
+# ==================== EXECUTION ====================
 
 if __name__ == "__main__":
     create_transaction_tables()

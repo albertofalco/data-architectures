@@ -1,27 +1,14 @@
-"""
-Script de pruebas para control de contenido de datasets normalizados.
+"""Validate normalized dataset content against the original raw CSV files."""
 
-Este script verifica que los datasets normalizados mantienen la integridad
-de los datos comparándolos con los originales. Se aplica a los datasets:
-- application_train
-- bureau
-- bureau_balance
-- credit_card_balance
-- installments_payments
-- POS_CASH_balance
-- previous_application
-
-Las pruebas incluyen:
-1. Validación de estructura (shape)
-2. Validación de columnas
-3. Comparación de valores
-"""
+# ==================== IMPORTS ====================
 
 import pandas as pd
 import numpy as np
 import os
 from pathlib import Path
 from pandasql import sqldf
+
+# ==================== CONFIGURATION ====================
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
@@ -43,20 +30,10 @@ EXCLUDE_COLUMNS = ['ORGANIZATION_TYPE', 'ORGANIZATION_TYPE_2']
 TEST_ROW_LIMIT = 100000
 
 
+# ==================== HELPER FUNCTIONS ====================
+
 def load_dataframes(folder_path, table_name, use_nullable_int=True, nrows=None):
-    """
-    Carga DataFrames desde archivos CSV en la carpeta especificada.
-    
-    Args:
-        folder_path (Path): Ruta a la carpeta base.
-        table_name (str): Nombre de la subcarpeta (ej. 'application_train').
-        use_nullable_int (bool): Si True, convierte columnas numéricas a Int64 nullable.
-        nrows (int, optional): Número máximo de filas a leer para la tabla principal.
-    
-    Returns:
-        dict: Diccionario con nombres de archivos (sin extensión) como claves 
-              y DataFrames como valores.
-    """
+    """Load a normalized dataset and its local dimension tables."""
     full_path = folder_path / table_name
     
     if not full_path.exists():
@@ -74,7 +51,7 @@ def load_dataframes(folder_path, table_name, use_nullable_int=True, nrows=None):
     for file in csv_files:
         file_path = full_path / file
         try:
-            # Solo limitar filas si es el archivo principal de la tabla
+            # Apply the row limit only to the primary dataset.
             current_nrows = nrows if file == f"{table_name}.csv" else None
             df = pd.read_csv(file_path, keep_default_na=False, nrows=current_nrows)
             
@@ -100,16 +77,7 @@ def load_dataframes(folder_path, table_name, use_nullable_int=True, nrows=None):
 
 
 def get_matching_common_dims(main_df, common_dims):
-    """
-    Detecta qué tablas de common_dims aplicar según las columnas del DataFrame.
-    
-    Args:
-        main_df (pd.DataFrame): DataFrame principal.
-        common_dims (dict): Diccionario de tablas de dimensiones comunes.
-    
-    Returns:
-        dict: Subconjunto de common_dims que aplican al DataFrame.
-    """
+    """Return common dimension tables referenced by a normalized dataset."""
     matching_dims = {}
     
     for dim_name, dim_df in common_dims.items():
@@ -121,17 +89,7 @@ def get_matching_common_dims(main_df, common_dims):
 
 
 def build_denormalized_query(dataframes, main_table, common_dims=None):
-    """
-    Construye una query SQL para unir la tabla principal con sus dimensiones.
-    
-    Args:
-        dataframes (dict): Diccionario de DataFrames cargados (locales + common_dims).
-        main_table (str): Nombre de la tabla principal.
-        common_dims (dict, optional): Diccionario de dimensiones comunes.
-    
-    Returns:
-        str: Query SQL construida.
-    """
+    """Build a query that joins a normalized dataset to its dimensions."""
     dim_tables = {k: v for k, v in dataframes.items() if k.startswith('dim_')}
     
     main_columns = list(dataframes[main_table].columns)
@@ -170,17 +128,7 @@ def build_denormalized_query(dataframes, main_table, common_dims=None):
 
 
 def denormalize_dataset(dataframes, main_table, common_dims=None):
-    """
-    Desnormaliza un dataset ejecutando la query construida.
-    
-    Args:
-        dataframes (dict): Diccionario de DataFrames.
-        main_table (str): Nombre de la tabla principal.
-        common_dims (dict, optional): Diccionario de tablas comunes.
-    
-    Returns:
-        pd.DataFrame: DataFrame desnormalizado.
-    """
+    """Reconstruct a normalized dataset through its dimension joins."""
     if common_dims:
         dataframes.update(common_dims)
     
@@ -190,9 +138,7 @@ def denormalize_dataset(dataframes, main_table, common_dims=None):
 
 
 def validate_content(original_df, result_df, table_name):
-    """
-    Valida que el contenido sea consistente.
-    """
+    """Compare original and reconstructed dataset content."""
     print(f"\n{'='*70}")
     print(f"VALIDACIÓN DE CONTENIDO: {table_name}")
     print(f"{'='*70}")
@@ -254,10 +200,10 @@ def validate_content(original_df, result_df, table_name):
     return True
 
 
+# ==================== MAIN FUNCTIONS ====================
+
 def run_tests(table_names=None):
-    """
-    Ejecuta todas las pruebas para los datasets especificados.
-    """
+    """Validate content for configured normalized datasets."""
     if table_names is None:
         table_names = LOOKUP_TABLES
     
@@ -342,6 +288,8 @@ def run_tests(table_names=None):
     
     return results
 
+
+# ==================== EXECUTION ====================
 
 if __name__ == '__main__':
     run_tests()

@@ -1,9 +1,6 @@
-"""
-Compara checksums de tablas entre dos bases MySQL.
+"""Compare table checksums and inventories between two MySQL databases."""
 
-Por defecto compara todas las tablas base comunes entre data_arch_prod y
-data_arch_test. Tambien informa tablas faltantes en cada base.
-"""
+# ==================== IMPORTS ====================
 
 import argparse
 import os
@@ -18,6 +15,8 @@ from sqlalchemy.engine import URL, Engine
 from sqlalchemy.exc import SQLAlchemyError
 
 
+# ==================== CONFIGURATION ====================
+
 BASE_DIR = Path(__file__).resolve().parent.parent.parent
 load_dotenv(BASE_DIR / ".env")
 
@@ -26,8 +25,11 @@ DEFAULT_TEST_DB = "data_arch_test"
 IDENTIFIER_RE = re.compile(r"^[A-Za-z0-9_$]+$")
 
 
+# ==================== MAIN CLASSES ====================
+
 @dataclass
 class ChecksumResult:
+    """Store checksum comparison results by outcome."""
     equal: dict[str, tuple[int | None, int | None]]
     different: dict[str, tuple[int | None, int | None]]
     errors: dict[str, str]
@@ -35,7 +37,10 @@ class ChecksumResult:
     only_in_test: set[str]
 
 
+# ==================== HELPER FUNCTIONS ====================
+
 def parse_args() -> argparse.Namespace:
+    """Parse command-line database selection arguments."""
     parser = argparse.ArgumentParser(
         description="Compara CHECKSUM TABLE entre dos bases MySQL."
     )
@@ -53,6 +58,7 @@ def parse_args() -> argparse.Namespace:
 
 
 def require_env(name: str) -> str:
+    """Return a required environment variable."""
     value = os.getenv(name)
     if value is None:
         raise RuntimeError(f"Falta la variable de entorno requerida: {name}")
@@ -60,6 +66,7 @@ def require_env(name: str) -> str:
 
 
 def create_mysql_engine() -> Engine:
+    """Create a MySQL engine from environment variables."""
     host = require_env("DB_HOST")
     port = require_env("DB_PORT")
     user = require_env("DB_USER")
@@ -81,12 +88,14 @@ def create_mysql_engine() -> Engine:
 
 
 def quote_identifier(identifier: str) -> str:
+    """Validate and quote a MySQL identifier."""
     if not IDENTIFIER_RE.fullmatch(identifier):
         raise ValueError(f"Identificador MySQL no soportado: {identifier!r}")
     return f"`{identifier}`"
 
 
 def get_tables(engine: Engine, db_name: str) -> set[str]:
+    """Return the base tables in a MySQL database."""
     query = text(
         """
         SELECT table_name
@@ -102,6 +111,7 @@ def get_tables(engine: Engine, db_name: str) -> set[str]:
 
 
 def get_checksum(engine: Engine, db_name: str, table_name: str) -> int | None:
+    """Return the MySQL checksum for a table."""
     qualified_table = (
         f"{quote_identifier(db_name)}.{quote_identifier(table_name)}"
     )
@@ -117,6 +127,7 @@ def get_checksum(engine: Engine, db_name: str, table_name: str) -> int | None:
 
 
 def compare_databases(engine: Engine, prod_db: str, test_db: str) -> ChecksumResult:
+    """Compare common table checksums and database inventories."""
     print(f"Obteniendo tablas de {prod_db}...")
     prod_tables = get_tables(engine, prod_db)
     print(f"Obteniendo tablas de {test_db}...")
@@ -158,6 +169,7 @@ def compare_databases(engine: Engine, prod_db: str, test_db: str) -> ChecksumRes
 
 
 def print_report(result: ChecksumResult, prod_db: str, test_db: str) -> None:
+    """Print a human-readable checksum comparison report."""
     compared = len(result.equal) + len(result.different)
 
     print(f"Comparacion de checksums: {prod_db} vs {test_db}")
@@ -195,6 +207,7 @@ def print_report(result: ChecksumResult, prod_db: str, test_db: str) -> None:
 
 
 def has_failures(result: ChecksumResult) -> bool:
+    """Return whether the comparison contains any failure."""
     return bool(
         result.different
         or result.only_in_prod
@@ -203,7 +216,10 @@ def has_failures(result: ChecksumResult) -> bool:
     )
 
 
+# ==================== MAIN FUNCTIONS ====================
+
 def main() -> int:
+    """Run the checksum comparison and return its exit status."""
     args = parse_args()
 
     try:
@@ -216,6 +232,8 @@ def main() -> int:
     print_report(result, args.prod_db, args.test_db)
     return 1 if has_failures(result) else 0
 
+
+# ==================== EXECUTION ====================
 
 if __name__ == "__main__":
     sys.exit(main())

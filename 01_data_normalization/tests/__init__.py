@@ -1,3 +1,1 @@
-"""
-__init__.py - Inicializa el módulo de pruebas.
-"""
+"""Provide validation scripts for normalized datasets."""

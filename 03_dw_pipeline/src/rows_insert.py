@@ -1,9 +1,6 @@
-"""
-Inserción de registros desde CSV de backup.
+"""Insert records from backup CSV files into MySQL tables."""
 
-Este script permite insertar registros desde un archivo CSV de backup
-a una tabla de la base de datos MySQL.
-"""
+# ==================== IMPORTS ====================
 
 import sys
 import os
@@ -13,25 +10,24 @@ from sqlalchemy import create_engine, inspect
 from dotenv import load_dotenv
 from pathlib import Path
 
-# Configuración de rutas
+# ==================== CONFIGURATION ====================
+
+# Project paths.
 CURRENT_DIR = Path(__file__).resolve().parent
 PROJECT_ROOT = CURRENT_DIR.parent.parent
 ASSETS_DIR = CURRENT_DIR.parent / "assets"
 ENV_PATH = PROJECT_ROOT / ".env"
 
-# Cargar variables de entorno
+# Load environment variables.
 if not ENV_PATH.exists():
     print(f"Error: No se encontró el archivo .env en {ENV_PATH}")
     sys.exit(1)
 load_dotenv(ENV_PATH)
 
+# ==================== HELPER FUNCTIONS ====================
+
 def get_db_connection():
-    """
-    Establece la conexión con la base de datos MySQL.
-    
-    Returns:
-        engine: Objeto de conexión SQLAlchemy engine.
-    """
+    """Create and return a SQLAlchemy engine for the configured MySQL database."""
     try:
         host = os.getenv("DB_HOST")
         user = os.getenv("DB_USER")
@@ -50,13 +46,10 @@ def get_db_connection():
         print(f"Error al configurar la conexión: {e}")
         sys.exit(1)
 
+# ==================== MAIN FUNCTIONS ====================
+
 def main():
-    """
-    Función principal que ejecuta la lógica de inserción de registros.
-    
-    Lee los parámetros de línea de comandos, verifica el archivo CSV y
-    la tabla en base de datos, y procede a insertar los registros.
-    """
+    """Validate a backup CSV and insert its records into the target table."""
     parser = argparse.ArgumentParser(description="Insertar registros desde CSV de backup.")
     parser.add_argument("table", help="Nombre de la tabla")
     parser.add_argument("rows", type=int, help="Número de registros a insertar")
@@ -68,8 +61,7 @@ def main():
     num_rows = args.rows
     ref_col = args.col
     
-    # 1. Verificar archivo CSV
-    # El archivo debe coincidir con el nombre de la tabla
+    # Require the CSV filename to match the target table.
     csv_path = ASSETS_DIR / f"{table_name}.csv"
     if not csv_path.exists():
         print(f"Error: No se encuentra el archivo de backup en {csv_path}")
@@ -77,7 +69,7 @@ def main():
         
     engine = get_db_connection()
     
-    # 2. Verificar existencia de tabla en BD
+    # Verify that the target table exists.
     try:
         inspector = inspect(engine)
         if table_name not in inspector.get_table_names():
@@ -88,7 +80,7 @@ def main():
         sys.exit(1)
 
     try:
-        # 3. Leer CSV
+        # Read the backup CSV.
         print(f"Leyendo archivo: {csv_path}")
         df = pd.read_csv(csv_path)
         
@@ -96,15 +88,13 @@ def main():
             print("Error: El archivo CSV está vacío.")
             sys.exit(1)
             
-        # 4. Seleccionar los top N registros
-        # Tomamos los primeros N registros del archivo (asumiendo que es el backup reciente de los últimos N registros)
-        # Esto reinsertará los registros que se eliminaron (si el orden en el CSV se mantiene como salió del backup)
+        # Select the requested rows in the order stored by the backup.
         df_to_insert = df.head(num_rows)
         
         if len(df_to_insert) < num_rows:
             print(f"Advertencia: Se solicitaron {num_rows} registros, pero el archivo solo contiene {len(df_to_insert)}.")
             
-        # 5. Mostrar rango de confirmación
+        # Show the identifier range before requesting confirmation.
         if ref_col in df_to_insert.columns:
             min_id = df_to_insert[ref_col].min()
             max_id = df_to_insert[ref_col].max()
@@ -121,15 +111,16 @@ def main():
             print("Operación cancelada por el usuario.")
             sys.exit(0)
 
-        # 6. Insertar en base de datos
+        # Append the selected records to the existing table.
         print("Insertando registros...")
-        # if_exists='append' agrega a la tabla existente
         df_to_insert.to_sql(table_name, engine, if_exists='append', index=False)
         print("Inserción completada exitosamente.")
 
     except Exception as e:
         print(f"Error durante el proceso de inserción: {e}")
         sys.exit(1)
+
+# ==================== EXECUTION ====================
 
 if __name__ == "__main__":
     main()

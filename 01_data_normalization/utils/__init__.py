@@ -1,3 +1,1 @@
-"""
-__init__.py - Inicializa el módulo de utilidades.
-"""
+"""Provide utilities for data normalization metadata and reporting."""

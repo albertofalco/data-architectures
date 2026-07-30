@@ -1,21 +1,21 @@
-"""
-Script de prueba de conexión a ClickHouse.
+"""Verify ClickHouse connectivity and list available databases."""
 
-Verifica que las credenciales y la conectividad con el servidor de ClickHouse
-sean correctas y lista las bases de datos disponibles.
-"""
+# ==================== IMPORTS ====================
+
 import clickhouse_connect
 import os
 from dotenv import load_dotenv
 
-# Cargar variables de entorno
+# ==================== CONFIGURATION ====================
+
+# Load environment variables.
 load_dotenv()
 
+# ==================== MAIN FUNCTIONS ====================
+
 def test_connection():
-    """
-    Intenta conectar a ClickHouse y listar las bases de datos.
-    """
-    # Detalles de conexión a ClickHouse
+    """Connect to ClickHouse and list the available databases."""
+    # Read ClickHouse connection settings.
     host = os.getenv("CLICKHOUSE_HOST", "localhost")
     try:
         port = int(os.getenv("CLICKHOUSE_PORT", "8123"))
@@ -38,6 +38,8 @@ def test_connection():
             
     except Exception as e:
         print(f"Connection failed: {e}")
+
+# ==================== EXECUTION ====================
 
 if __name__ == "__main__":
     test_connection()

@@ -1,8 +1,7 @@
-#######################################################
-# Script para cargar archivos CSV en una base de datos MySQL.
-#######################################################
+"""Load normalized CSV files into MySQL tables."""
 
-# Importacion de librerias.
+# ==================== IMPORTS ====================
+
 import argparse
 from getpass import getpass
 import os
@@ -14,21 +13,17 @@ from sqlalchemy import BigInteger, Integer, create_engine, text
 from sqlalchemy.engine import URL
 from sqlalchemy.exc import SQLAlchemyError
 
-#######################################################
-# CONFIGURACIÓN
-#######################################################
+# ==================== CONFIGURATION ====================
 
 BASE_DIR = Path(__file__).resolve().parent.parent.parent
 load_dotenv(BASE_DIR / '.env')
 DATA_PATH = BASE_DIR / 'data' / 'db_input'
 
-######################################################
-# FUNCIONES PRINCIPALES
-######################################################
+# ==================== MAIN FUNCTIONS ====================
 
 def main():
-    """Ejecuta el proceso principal de carga de datos a MySQL."""
-    # 1. Configuración de argumentos
+    """Load all normalized CSV files into the configured MySQL database."""
+    # Parse connection arguments.
     parser = argparse.ArgumentParser(description="Cargador de CSV a MySQL vía SQLAlchemy")
     parser.add_argument("--host", default=os.getenv('DB_HOST', '127.0.0.1'), help="Host de la base de datos")
     parser.add_argument("--user", default=os.getenv('DB_USER', 'root'), help="Usuario")
@@ -38,7 +33,7 @@ def main():
     args = parser.parse_args()
     password = getpass("Password: ") if args.password else os.getenv('DB_PASSWORD', '')
 
-    # 2. Crear el Engine de SQLAlchemy
+    # Create an SQLAlchemy engine without selecting a database.
     connection_url = URL.create(
         "mysql+mysqlconnector",
         username=args.user,
@@ -47,13 +42,13 @@ def main():
     )
     engine = create_engine(connection_url)
 
-    # 3. Verificar/Crear la base de datos
+    # Create the database when needed.
     try:
         with engine.connect() as conn:
             conn.execute(text(f"CREATE DATABASE IF NOT EXISTS {args.database}"))
             conn.execute(text(f"USE {args.database}"))
         
-        # Re-creamos el engine apuntando directamente a la base de datos.
+        # Recreate the engine with the target database selected.
         db_url = URL.create(
             "mysql+mysqlconnector",
             username=args.user,
@@ -67,7 +62,7 @@ def main():
         print(f"Error de conexión o creación de DB: {e}")
         return
 
-    # 4. Procesar archivos CSV
+    # Find all normalized CSV files recursively.
     if not DATA_PATH.exists():
         print(f"Error: La carpeta {DATA_PATH} no existe.")
         return
@@ -79,21 +74,17 @@ def main():
         print(f"Procesando {archivo.name}...")
 
         try:
-            # Leer CSV con Pandas
+            # Read the normalized CSV.
             df = pd.read_csv(archivo, dtype_backend="numpy_nullable")
             
-            # Definir diccionarios de tipos manuales si es necesario
-            # Pero una forma automática de "arreglar" los Int64 para SQLAlchemy es:
+            # Map nullable pandas integers to SQLAlchemy integer columns.
             dtype_mapping = {}
             for col_name, col_type in df.dtypes.items():
                 if str(col_type) == 'Int64' or str(col_type) == 'int64':
-                    dtype_mapping[col_name] = Integer() # O BigInteger() si son muy grandes
+                    dtype_mapping[col_name] = Integer()
             print(f"Tipos detectados para '{archivo.name}': {dtype_mapping}")
             
-            # 5. Cargar en MySQL usando Pandas + SQLAlchemy
-            # 'if_exists="replace"' elimina la tabla y la crea de nuevo con los tipos correctos.
-            # 'index=False' evita que Pandas cree una columna para el índice del DataFrame.
-            # 'chunksize' ayuda si los archivos son muy grandes.
+            # Replace the destination table and load data in batches.
             df.to_sql(
                 name=nombre_tabla, 
                 con=engine, 
@@ -111,9 +102,7 @@ def main():
     
     print("\nProceso completado.")
 
-######################################################
-# EJECUCIÓN PRINCIPAL
-######################################################
+# ==================== EXECUTION ====================
 
 if __name__ == '__main__':
     main()

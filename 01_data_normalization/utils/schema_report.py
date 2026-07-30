@@ -1,42 +1,25 @@
-"""
-Reporte de esquema de datos.
+"""Generate a schema report for columns shared across raw CSV files."""
 
-Este script analiza archivos CSV y genera un reporte que muestra:
-- Columnas presentes en multiples archivos
-- Tipo de datos de cada columna
-- Valores de ejemplo (hasta 10 por columna)
-- Lista de archivos donde aparece cada columna
-
-Usage:
-    ./venv/bin/python 01_data_normalization/utils/schema_report.py
-"""
+# ==================== IMPORTS ====================
 
 import pandas as pd
 from pathlib import Path
 from collections import defaultdict
 
-# Directorio donde se encuentra el script y directorio de datos crudos
+# ==================== CONFIGURATION ====================
+
+# Project and raw data paths.
 SCRIPT_DIR = Path(__file__).parent
 RAW_DIR = SCRIPT_DIR.parent.parent / 'data' / 'raw'
 
-# Archivos a excluir del reporte (no son datos de entrenamiento)
+# Exclude files that are not training datasets.
 EXCLUDED_FILES = {'application_test.csv', 'HomeCredit_columns_description.csv', 'sample_submission.csv'}
 
 
+# ==================== HELPER FUNCTIONS ====================
+
 def get_column_mapping(raw_dir):
-    """
-    Analiza los archivos CSV y genera mapeos de columnas a archivos y tipos de datos.
-
-    Args:
-        raw_dir: Directorio que contiene los archivos CSV
-
-    Returns:
-        tuple: (file_columns, column_to_files, file_dtypes, file_value_counts)
-        - file_columns: dict con nombres de archivos y sus columnas
-        - column_to_files: defaultdict que mapea nombres de columnas a archivos
-        - file_dtypes: dict con los tipos de datos de cada archivo
-        - file_value_counts: dict con valores de ejemplo por columna
-    """
+    """Collect columns, types, source files, and sample values from raw CSV files."""
     column_to_files = defaultdict(list)
     file_columns = {}
     file_dtypes = {}
@@ -63,20 +46,7 @@ def get_column_mapping(raw_dir):
 
 
 def generate_report(file_columns, column_to_files, file_dtypes, file_value_counts):
-    """
-    Genera un DataFrame con el reporte de esquema.
-
-    El reporte incluye solo columnas que aparecen en mas de un archivo.
-
-    Args:
-        file_columns: dict con nombres de archivos y sus columnas
-        column_to_files: mapeo de columnas a archivos
-        file_dtypes: tipos de datos por archivo
-        file_value_counts: valores de ejemplo por columna
-
-    Returns:
-        DataFrame con el reporte generado
-    """
+    """Build a schema report for columns present in multiple files."""
     report_data = []
 
     for file_name, columns in file_columns.items():
@@ -95,14 +65,10 @@ def generate_report(file_columns, column_to_files, file_dtypes, file_value_count
     return df_report
 
 
-def main():
-    """
-    Funcion principal que genera el reporte de esquema.
+# ==================== MAIN FUNCTIONS ====================
 
-    1. Lee archivos CSV del directorio raw
-    2. Analiza columnas, tipos y valores
-    3. Genera reporte CSV con columnas comunes
-    """
+def main():
+    """Write the shared-column schema report to CSV."""
     raw_path = RAW_DIR.resolve()
 
     file_columns, column_to_files, file_dtypes, file_value_counts = get_column_mapping(raw_path)
@@ -113,6 +79,8 @@ def main():
     report_df.to_csv(output_path, index=False)
     print(f"Reporte guardado en: {output_path}")
 
+
+# ==================== EXECUTION ====================
 
 if __name__ == '__main__':
     main()

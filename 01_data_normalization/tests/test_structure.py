@@ -1,16 +1,12 @@
-"""
-Test Structure - Validación de Estructura de Datasets Normalizados
-===================================================================
+"""Validate normalized dataset rows and reconstructed column names."""
 
-Este módulo valida que los datasets normalizados mantengan la estructura
-correcta después del proceso de normalización, verificando:
-- Número de filas (consistencia con datos originales)
-- Columnas (nombres y presencia de dimensiones)
-"""
+# ==================== IMPORTS ====================
 
 import pandas as pd
 import os
 from pathlib import Path
+
+# ==================== CONFIGURATION ====================
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
@@ -28,44 +24,41 @@ OUTPUT_DIR = BASE_DIR / '..' / 'data' / 'db_input'
 RAW_DATA_DIR = BASE_DIR / '..' / 'data' / 'raw'
 COMMON_DIM_DIR = OUTPUT_DIR / 'common_dims'
 
+# ==================== HELPER FUNCTIONS ====================
+
 def get_dimension_column_name(dim_name, table_dir):
-    """
-    Busca el archivo de dimensión y retorna el nombre de la segunda columna (descripción).
-    """
+    """Return the descriptive column name from a dimension CSV."""
     dim_filename = f"{dim_name}.csv"
     
-    # Buscar primero en la carpeta de la tabla
+    # Prefer a dataset-local dimension table.
     dim_path = table_dir / dim_filename
     if not dim_path.exists():
-        # Buscar en common_dims
+        # Fall back to the shared dimension directory.
         dim_path = COMMON_DIM_DIR / dim_filename
     
     if not dim_path.exists():
         return None
         
     try:
-        # Leer solo la primera fila para obtener columnas
+        # Read only the CSV header.
         df = pd.read_csv(dim_path, nrows=0)
         if len(df.columns) >= 2:
             return df.columns[1]
     except:
+        # Treat unreadable dimension metadata as unavailable.
         pass
     return None
 
 def rename_id_columns(df, table_name):
-    """
-    Renombra las columnas _ID usando los nombres de las dimensiones correspondientes.
-    """
+    """Rename dimension identifiers to their descriptive column names."""
     new_columns = {}
     table_dir = OUTPUT_DIR / table_name
     
     for col in df.columns:
         if col.endswith('_ID') and col != 'SK_ID_CURR' and col != 'SK_ID_BUREAU' and col != 'SK_ID_PREV': 
-            # Excluir IDs primarios que no son dimensiones (si aplica)
-            # Aunque en este dataset SK_ID_CURR suele ser la PK/FK, no una dimensión lookup.
-            # Verificamos si existe dimensión para la columna.
+            # Preserve identifiers that do not reference lookup dimensions.
             
-            col_base = col[:-3] # Quitar _ID
+            col_base = col[:-3]
             dim_name = f"dim_{col_base.lower()}"
             
             real_col_name = get_dimension_column_name(dim_name, table_dir)
@@ -79,9 +72,7 @@ def rename_id_columns(df, table_name):
     return df.rename(columns=new_columns)
 
 def validate_structure(original_df, input_df, table_name):
-    """
-    Valida la estructura (shape) del dataset.
-    """
+    """Compare original and normalized dataset row counts."""
     print(f"\n{'='*70}")
     print(f"VALIDACIÓN DE ESTRUCTURA: {table_name}")
     print(f"{'='*70}")
@@ -93,25 +84,23 @@ def validate_structure(original_df, input_df, table_name):
         print(f"[ERROR] Número de filas diferente")
         return False
     
-    # No validamos columnas aquí porque input_df tiene IDs y original tiene valores
+    # Column names are validated separately after dimension reconstruction.
     print(f"[OK] Estructura (filas) validada")
     return True
 
 def validate_columns(original_df, input_df, table_name):
-    """
-    Valida que las columnas sean consistentes después de renombrar IDs.
-    """
+    """Compare columns after reconstructing dimension names."""
     print(f"\n{'='*70}")
     print(f"VALIDACIÓN DE COLUMNAS: {table_name}")
     print(f"{'='*70}")
     
-    # Trabajar sobre una copia para renombrar
+    # Rename columns without modifying the input DataFrame.
     df_renamed = input_df.copy()
     df_renamed = rename_id_columns(df_renamed, table_name)
     
     errors = False
     
-    # Columnas en original que no están en input (renombrado)
+    # Report source columns missing from normalized data.
     missing_in_input = set(original_df.columns) - set(df_renamed.columns)
     if missing_in_input:
         print(f"[ERROR] Columnas faltantes en db_input (tras renombrado):")
@@ -119,7 +108,7 @@ def validate_columns(original_df, input_df, table_name):
             print(f"  - {col}")
         errors = True
         
-    # Columnas en input (renombrado) que no están en original
+    # Report normalized columns absent from the source.
     extra_in_input = set(df_renamed.columns) - set(original_df.columns)
     if extra_in_input:
         print(f"[WARNING] Columnas extra en db_input (tras renombrado):")
@@ -131,7 +120,10 @@ def validate_columns(original_df, input_df, table_name):
     
     return not errors
 
+# ==================== MAIN FUNCTIONS ====================
+
 def run_tests():
+    """Validate structure for all configured normalized datasets."""
     print("\n" + "="*70)
     print("CONTROL DE ESTRUCTURA - DATASETS NORMALIZADOS")
     print("="*70)
@@ -144,7 +136,7 @@ def run_tests():
         print(f"{'#'*70}")
         
         try:
-            # 1. Cargar archivo original
+            # Load the original raw CSV.
             raw_path = RAW_DATA_DIR / f"{table_name}.csv"
             if not raw_path.exists():
                 print(f"[ERROR] Archivo original no encontrado: {raw_path}")
@@ -154,7 +146,7 @@ def run_tests():
             print(f"Cargando original: {raw_path.name}")
             original_df = pd.read_csv(raw_path)
             
-            # 2. Cargar archivo db_input
+            # Load the normalized primary dataset.
             input_path = OUTPUT_DIR / table_name / f"{table_name}.csv"
             if not input_path.exists():
                 print(f"[ERROR] Archivo db_input no encontrado: {input_path}")
@@ -164,7 +156,7 @@ def run_tests():
             print(f"Cargando input: {input_path.name}")
             input_df = pd.read_csv(input_path)
             
-            # 3. Validaciones
+            # Validate rows and columns.
             struct_valid = validate_structure(original_df, input_df, table_name)
             col_valid = validate_columns(original_df, input_df, table_name)
             
@@ -185,6 +177,8 @@ def run_tests():
         print("\n[OK] TODAS LAS PRUEBAS DE ESTRUCTURA COMPLETADAS EXITOSAMENTE")
     else:
         print("\n[WARNING] FALLARON ALGUNAS PRUEBAS DE ESTRUCTURA")
+
+# ==================== EXECUTION ====================
 
 if __name__ == '__main__':
     run_tests()

@@ -1,30 +1,6 @@
-"""
-Script para control de contenido de tablas en bases de datos respecto a archivos planos.
+"""Compare normalized CSV files with their corresponding MySQL tables."""
 
-Este script verifica que las tablas contenidas en la base de datos mantienen la integridad
-de los datos comparándolos con los archivos fuente.
-
-Las pruebas incluyen:
-1. Validacion de nombres de tablas.
-2. Validacion de estructura (shape).
-3. Validacion de nobmres de columnas.
-4. Comparación de valores (por hashing o pandas).
-
-Uso:
-python test_dbinput_db.py [--table NOMBRE_TABLA] [--method {hashing,pandas}] [--schema-only]
-
-Ejemplos:
-- Verificar todas las tablas (hashing por defecto):
-  python test_dbinput_db.py
-- Verificar solo estructura/esquema (sin leer todo el contenido):
-  python test_dbinput_db.py --schema-only
-- Verificar una tabla específica con método de pandas:
-  python test_dbinput_db.py --table application_train --method pandas
-"""
-
-# ============================================================================
-# IMPORTACION DE LIBRERIAS
-# ============================================================================
+# ==================== IMPORTS ====================
 
 import os
 import sys
@@ -36,16 +12,17 @@ from pathlib import Path
 from dotenv import load_dotenv
 from sqlalchemy import create_engine, text
 
-# ============================================================================
-# CONFIGURACION
-# ============================================================================
+# ==================== CONFIGURATION ====================
 
 BASE_DIR = Path(__file__).resolve().parent.parent.parent
 load_dotenv(BASE_DIR / '.env')
 DATA_PATH = BASE_DIR / 'data' / 'db_input'
 KEYS_FILE = BASE_DIR / '02_database_connections' / 'utils' / 'keys.json'
 
+# ==================== HELPER FUNCTIONS ====================
+
 def load_keys():
+    """Load configured table keys indexed by lowercase table name."""
     if KEYS_FILE.exists():
         with open(KEYS_FILE) as f:
             keys_list = json.load(f)
@@ -54,17 +31,11 @@ def load_keys():
 
 KEYS_DATA = load_keys()
 
-# ============================================================================
-# FUNCIONES DE INTEGRIDAD
-# ============================================================================
-
 def verify_schema_and_shape(csv_path, table_name, connection):
-    """
-    Realiza controles rápidos de columnas y cantidad de filas antes de comprobaciones profundas.
-    """
+    """Compare CSV and database column order and row counts."""
     print(f"--- [SCHEMA] Validando estructura de {table_name} ---")
     
-    # 1. Control de nombres/orden de columnas
+    # Compare column names and order.
     df_csv_cols = pd.read_csv(csv_path, nrows=0).columns.tolist()
     query_cols = text(f"SELECT * FROM {table_name} LIMIT 0")
     df_db_cols = pd.read_sql(query_cols, connection).columns.tolist()
@@ -76,7 +47,7 @@ def verify_schema_and_shape(csv_path, table_name, connection):
         return False
     print("✅ Columnas coinciden")
 
-    # 2. Control de Shape (Filas)
+    # Compare row counts.
     with open(csv_path, 'r', encoding='utf-8') as f:
         csv_rows = sum(1 for _ in f) - 1 # Restar header
         
@@ -91,28 +62,25 @@ def verify_schema_and_shape(csv_path, table_name, connection):
     return True
 
 def verify_by_hashing(csv_path, table_name, connection, pk_cols=None, chunk_size=1000000):
-    """
-    Genera un hash SHA256 de los datos por bloques para comparar integridad
-    sin cargar todo el archivo en memoria.
-    """
+    """Compare ordered CSV and database content with cumulative SHA-256 hashes."""
     print(f"--- [HASH] Verificando {table_name} ---")
 
     if not pk_cols:
         print(f"  ⚠️ PK no encontrada para {table_name}, omitiendo...")
         return None
     
-    # Asegurar un ordenamiento 100% determinista: PKs primero + el resto de las columnas.
-    # Esto soluciona problemas donde las PKs definidas no sean verdaderamente únicas (ej. meses/cuotas).
+    # Sort by primary keys and remaining columns for deterministic comparisons.
     df_cols_dummy = pd.read_csv(csv_path, nrows=0)
     all_cols = list(df_cols_dummy.columns)
     sort_cols = pk_cols + [col for col in all_cols if col not in pk_cols]
     
     def get_hash_csv():
+        """Return the hash of the fully ordered CSV content."""
         sha256 = hashlib.sha256()
         print(f"  Cargando y ordenando CSV completo en memoria para hash...")
         df_full_csv = pd.read_csv(csv_path)
         
-        # Igualamos el comportamiento de MySQL (NULLs primero)
+        # Match MySQL ordering by placing null values first.
         df_full_csv = df_full_csv.sort_values(by=sort_cols, na_position='first').reset_index(drop=True)
             
         for pos in range(0, len(df_full_csv), chunk_size):
@@ -124,6 +92,7 @@ def verify_by_hashing(csv_path, table_name, connection, pk_cols=None, chunk_size
         return sha256.hexdigest()
 
     def get_hash_db():
+        """Return the hash of ordered database content read in chunks."""
         sha256 = hashlib.sha256()
         offset = 0
         order_by_clause = ", ".join([f"`{col}`" for col in sort_cols])
@@ -153,16 +122,14 @@ def verify_by_hashing(csv_path, table_name, connection, pk_cols=None, chunk_size
         return False
 
 def verify_by_pandas(csv_path, table_name, connection, pk_cols=None, chunk_size=1000000):
-    """
-    Compara el contenido fila a fila utilizando chunks y validación de Pandas.
-    """
+    """Compare ordered CSV and database rows with pandas."""
     print(f"--- [PANDAS] Verificando {table_name} ---")
 
     if not pk_cols:
         print(f"  ⚠️ PK no encontrada para {table_name}, omitiendo...")
         return None
 
-    # Asegurar un ordenamiento 100% determinista
+    # Build deterministic ordering across all columns.
     df_cols_dummy = pd.read_csv(csv_path, nrows=0)
     all_cols = list(df_cols_dummy.columns)
     sort_cols = pk_cols + [col for col in all_cols if col not in pk_cols]
@@ -172,7 +139,7 @@ def verify_by_pandas(csv_path, table_name, connection, pk_cols=None, chunk_size=
     print(f"  Cargando y ordenando CSV completo en memoria...")
     df_full_csv = pd.read_csv(csv_path)
     
-    # Igualamos el comportamiento de MySQL (NULLs primero)
+    # Match MySQL ordering by placing null values first.
     df_full_csv = df_full_csv.sort_values(by=sort_cols, na_position='first').reset_index(drop=True)
     
     offset = 0
@@ -185,10 +152,10 @@ def verify_by_pandas(csv_path, table_name, connection, pk_cols=None, chunk_size=
             query = text(f"SELECT * FROM {table_name} ORDER BY {order_by_clause} LIMIT {db_limit} OFFSET {offset}")
             df_db = pd.read_sql(query, connection)
             
-            # Normalización rápida: asegurar que los tipos coincidan
+            # Align database types with the source DataFrame.
             df_db = df_db.astype(df_csv.dtypes)
 
-            # Asegurar que los índices coincidan para la comparación
+            # Align indexes before comparison.
             df_db.index = pd.RangeIndex(start=offset, stop=offset + len(df_db), step=1)
             df_csv.index = pd.RangeIndex(start=offset, stop=offset + len(df_csv), step=1)
 
@@ -204,6 +171,7 @@ def verify_by_pandas(csv_path, table_name, connection, pk_cols=None, chunk_size=
         print(f"\n❌ Error durante la comparación: {e}")
 
 def control_table_names(connection, dir_path):
+    """Compare normalized CSV filenames with database table names."""
     result = connection.execute(text("SHOW TABLES"))
     db_names = {t[0].lower() for t in result.fetchall()}
 
@@ -217,11 +185,10 @@ def control_table_names(connection, dir_path):
     common_names = csv_names.intersection(db_names)
     return common_names, dict_archivos
 
-# ============================================================================
-# CLI
-# ============================================================================
+# ==================== MAIN FUNCTIONS ====================
 
 def parse_args():
+    """Parse command-line validation options."""
     parser = argparse.ArgumentParser(
         description="Verifica integridad de tablas MySQL contra archivos CSV fuente."
     )
@@ -245,11 +212,8 @@ def parse_args():
     )
     return parser.parse_args()
 
-# ============================================================================
-# MAIN
-# ============================================================================
-
 def main():
+    """Run normalized CSV integrity checks against MySQL."""
     args = parse_args()
 
     try:
@@ -275,7 +239,7 @@ def main():
             pk_cols = KEYS_DATA.get(table, [])
             print(f"\nProcesando tabla {table} ({i}/{len(tables)})...")
             
-            # Realizar validación rápida de estructura
+            # Validate schema and row count before comparing content.
             if not verify_schema_and_shape(csv_file, table, connection):
                 print(f"⚠️ Omitiendo verificación profunda para {table} debido a fallos de estructura.")
                 continue
@@ -291,6 +255,8 @@ def main():
     finally:
         connection.close()
         print("\nProceso finalizado.")
+
+# ==================== EXECUTION ====================
 
 if __name__ == '__main__':
     main()
