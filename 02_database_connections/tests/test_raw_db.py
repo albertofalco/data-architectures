@@ -105,7 +105,7 @@ def verify_schema_and_shape(csv_path, table_name, engine, metadata, expected_col
 
     # Compare row counts.
     with open(csv_path, 'r', encoding='utf-8') as f:
-        csv_rows = sum(1 for _ in f) - 1 # Restar header
+        csv_rows = sum(1 for _ in f) - 1  # Exclude the CSV header from the row count.
         
     query_count = text(f"SELECT COUNT(*) FROM `{table_name}`")
     with engine.connect() as conn:

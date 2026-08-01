@@ -1,8 +1,14 @@
 """Script bootstrap utilities."""
 
+# ==================== IMPORTS ====================
+
 from __future__ import annotations
 import sys
 from pathlib import Path
+
+
+# ==================== HELPER FUNCTIONS ====================
+
 
 def add_src_to_path() -> Path:
     """Add the module src directory to sys.path and return module root."""

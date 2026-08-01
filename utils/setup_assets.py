@@ -1,16 +1,6 @@
-"""
-Script para descarga y configuración de assets desde Google Drive.
+"""Download Google Drive assets and protect them through the project .gitignore."""
 
-Este módulo proporciona funcionalidades para descargar archivos o carpetas
-desde Google Drive, extraerlos si son archivos ZIP, y gestionar automáticamente
-la protección de estos archivos en .gitignore para evitar subirlos al repositorio.
-
-Uso:
-    python setup_assets.py <file_id> <dest_path>
-
-Ejemplo:
-    python setup_assets.py 1BcxEuEUQyF5x34gwbMGeY9W1qW3h8hQw /ruta/destino
-"""
+# ==================== IMPORTS ====================
 
 import gdown
 import zipfile
@@ -18,36 +8,22 @@ import argparse
 import os
 from pathlib import Path
 
+
+# ==================== HELPER FUNCTIONS ====================
+
+
 def is_folder_populated(path):
-    """
-    Verifica si la carpeta existe y contiene archivos.
-    
-    Args:
-        path: Objeto Path que representa la ruta a verificar.
-    
-    Returns:
-        bool: True si la carpeta existe y contiene al menos un archivo o subcarpeta,
-              False en caso contrario.
-    """
+    """Return whether a directory exists and contains at least one entry."""
     return path.exists() and any(path.iterdir())
 
+
 def update_gitignore(path_to_ignore):
-    """
-    Añade la ruta de descarga al .gitignore de la raíz del proyecto.
-    
-    Busca el archivo .gitignore en el directorio raíz del repositorio y añade
-    la ruta especificada si no está ya presente. Esto evita que los archivos
-    descargados se suban accidentalmente al control de versiones.
-    
-    Args:
-        path_to_ignore: Ruta relativa o absoluta que se desea proteger.
-                       Se normalizará para ser relativa a la raíz del repo.
-    """
-    # Buscamos el .gitignore subiendo un nivel desde 'utils/'
+    """Add a normalized download path to the project .gitignore."""
+    # Locate the repository .gitignore one level above utils.
     gitignore_path = Path(__file__).parent.parent / ".gitignore"
     
-    # Normalizamos la ruta para que sea relativa a la raíz del repo
-    # Ejemplo: './data/raw' -> 'data/raw/'
+    # Normalize the path relative to the repository root.
+    # Example: './data/raw' becomes 'data/raw/'.
     clean_path = str(Path(path_to_ignore)).replace("\\", "/").strip("./").strip("/") + "/"
     
     if not gitignore_path.exists():
@@ -63,30 +39,15 @@ def update_gitignore(path_to_ignore):
     else:
         print(f"La ruta '{clean_path}' ya está protegida en .gitignore.")
 
+
 def download_and_setup(file_id, dest_path):
-    """
-    Descarga un archivo desde Google Drive y lo configura en la ruta destino.
-    
-    Este proceso incluye:
-    1. Añadir la ruta destino al .gitignore para protección
-    2. Verificar si los archivos ya existen para evitar descargas duplicadas
-    3. Descargar el archivo desde Google Drive usando gdown
-    4. Extraer el contenido si es un archivo ZIP
-    5. Limpiar archivos temporales de descarga
-    
-    Args:
-        file_id: ID del archivo en Google Drive (extracted from the share URL).
-        dest_path: Ruta destino donde se guardarán los archivos descargados.
-    
-    Returns:
-        None. La función imprime mensajes de estado durante el proceso.
-    """
+    """Download a Google Drive asset and extract it when it is a ZIP archive."""
     destination = Path(dest_path)
     
-    # 1. Asegurar protección en Git
+    # 1. Protect the destination from accidental commits.
     update_gitignore(dest_path)
     
-    # 2. Verificación de existencia
+    # 2. Skip downloads when the destination is already populated.
     if is_folder_populated(destination):
         print(f"La ruta '{destination}' ya contiene archivos. Saltando descarga.")
         return
@@ -96,7 +57,7 @@ def download_and_setup(file_id, dest_path):
     
     print(f"Iniciando descarga en: {destination}")
     
-    # Descarga temporal
+    # Download to a temporary filename before determining the asset type.
     temp_name = "temp_download"
     downloaded_file = gdown.download(url, quiet=False, fuzzy=True, output=str(destination / temp_name))
     
@@ -106,7 +67,7 @@ def download_and_setup(file_id, dest_path):
 
     downloaded_path = Path(downloaded_file)
 
-    # 3. Procesamiento
+    # 3. Extract ZIP archives and remove their temporary download.
     if downloaded_path.suffix.lower() == '.zip':
         print(f"Descomprimiendo ZIP en {destination}...")
         try:
@@ -117,6 +78,10 @@ def download_and_setup(file_id, dest_path):
             print("Limpieza de temporal completada.")
     else:
         print(f"Archivo individual guardado en: {downloaded_path}")
+
+
+# ==================== EXECUTION ====================
+
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Descarga assets y actualiza .gitignore.")

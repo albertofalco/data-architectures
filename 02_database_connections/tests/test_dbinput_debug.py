@@ -76,7 +76,7 @@ def debug_table(engine, csv_path, table_name, pk_cols, sample_size=500000, expor
     print(f"  Cargando y ordenando CSV completo en memoria para extraer muestra...")
     df_csv_full = pd.read_csv(csv_path)
     df_csv = df_csv_full.sort_values(by=sort_cols).head(sample_size).copy()
-    del df_csv_full # Liberamos la memoria del CSV completo inmediatamente
+    del df_csv_full  # Release the full CSV DataFrame as soon as the sample is available.
     
     print(f"  -> CSV records: {len(df_csv)} | DB records: {len(df_db)}")
     
