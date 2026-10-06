@@ -1,0 +1,6 @@
+site_name: Anexos técnicos de la Tesis
+
+docs_dir: rtd
+
+theme:
+  name: material
