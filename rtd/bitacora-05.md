@@ -1,6 +1,10 @@
 # Bitácora 5: Incorporación de Llaves y Análisis de Esquema
 
-## Contexto y objetivo
+## Objetivo
+
+Esta bitácora describe la incorporación de llaves primarias, llaves foráneas e índices al modelo de datos con el propósito de fortalecer su integridad referencial. 
+
+## Contexto
 
 Durante el análisis del esquema de la base de datos en bitácoras anteriores, se identificó que las tablas de los esquemas data_arch_prod y data_arch_test carecían de integridad referencial formal. Para solucionar esta situación, se desarrolló el script db_ddl_keys.sql con el objetivo de incorporar llaves primarias (primary keys) y llaves foráneas (foreign keys) a las tablas del modelo de datos. Adicionalmente, se creó el script db_schema_analysis.sql para verificar que las modificaciones se aplicaron correctamente mediante consultas al diccionario de datos de MySQL.
 

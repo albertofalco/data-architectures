@@ -1,5 +1,9 @@
 # Bitácora 3: Scripts y comandos DDL
 
+## Objetivo
+
+Esta bitácora registra el análisis inicial de la estructura de las tablas almacenadas en MySQL y la utilización de instrucciones DDL para examinar tipos de datos, restricciones y relaciones entre tablas, así como las inconsistencias identificadas durante esta etapa que motivaron la posterior refactorización de los procesos de normalización y conexión con la base de datos. 
+
 ## Consulta de los tipos de datos y restricciones
 
 Se accede a MySQL Workbench. Se utilizan las credenciales de `admin`. Se diseña un script para obtener el listado de las columnas de cada una de las tablas e información aclaratoria.

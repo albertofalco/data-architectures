@@ -1,12 +1,16 @@
 # Bitácora 7: Desarrollo de Machine Learning
 
-## Objetivo del módulo
+## Objetivo
+
+Esta bitácora describe el diseño e implementación del módulo de aprendizaje automático, incluyendo su arquitectura modular, los mecanismos de acceso e ingeniería de datos, el preprocesamiento, la construcción de atributos, el entrenamiento y optimización de modelos, la evaluación y el scoring, así como las métricas analíticas y operativas, dependencias, artefactos y pruebas utilizados. 
+
+## Descripción del módulo 04
 
 El módulo 04_ml_development concentra la capa de desarrollo, validación, entrenamiento, evaluación y scoring de modelos de machine learning dentro del flujo general del repositorio. Su objetivo principal es construir un pipeline reproducible para la clasificación binaria de riesgo crediticio usando como variable objetivo “TARGET” y como entidad principal “SK_ID_CURR”.
 
 La entrada para entrenamiento, validación y prueba proviene de los archivos PARQUET generados por el Data Warehouse en data/dw_parquet/. Por lo tanto, en esta etapa, el módulo no modifica el data warehouse ni ejecuta scripts mutantes de base de datos. No obstante, el diseño contempla que los datos se extraigan desde ClickHouse para el uso en producción.
 
-## Arquitectura del módulo y submódulos
+## Arquitectura del módulo 04 y submódulos
 
 Se diseñó una arquitectura modular para que cada capa del pipeline cumpla una sola responsabilidad: análisis exploratorio inicial (EDA), ingeniería de datos, preprocesamiento, entrenamiento, optimización de hiperparámetros, evaluación, scoring productivo sobre lotes y benchmarking productivo.
 

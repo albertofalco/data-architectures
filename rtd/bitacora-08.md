@@ -2,7 +2,7 @@
 
 ## Objetivo
 
-Esta bitácora contiene los resultados y conclusiones obtenidos a partir de las ejecuciones de entrenamiento del módulo 04_ml_development, almacenados en el directorio data/ml_outputs/.
+Esta bitácora registra las ejecuciones iniciales de entrenamiento de las distintas familias de modelos evaluadas en el trabajo.
 
 ## Familias de modelos analizadas
 

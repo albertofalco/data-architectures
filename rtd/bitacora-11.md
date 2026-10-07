@@ -2,9 +2,9 @@
 
 ## Objetivo
 
-Esta bitácora registra las iteraciones de despliegue productivo, consignando datos sobre las inserciones, inferencias y mediciones operativas.
+Esta bitácora registra las sucesivas iteraciones de inferencia ejecutadas en el entorno productivo simulado, con el propósito de evaluar el comportamiento de los modelos seleccionados sobre lotes de distinto tamaño y analizar conjuntamente su desempeño predictivo y operativo. 
 
-## Resumen
+## Resumen de las iteraciones ejecutadas
 
 A continuación, se detalla un resumen de las iteraciones de despliegue ejecutadas:
 

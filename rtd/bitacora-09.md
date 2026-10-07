@@ -1,8 +1,12 @@
 # Bitácora 9: Optimización de hiperparámetros
 
-## Objetivo y estado general
+## Objetivo
 
-Esta bitácora registra las ejecuciones de optimización de hiperparámetros del módulo 04_ml_development. Los resultados se almacenaron en data/ml_outputs/metrics/.
+Esta bitácora documenta las ejecuciones destinadas a optimizar los hiperparámetros de los modelos seleccionados, registrando los espacios de búsqueda utilizados, las configuraciones evaluadas, las mejoras obtenidas respecto de los modelos iniciales y las restricciones operativas observadas, con el propósito de seleccionar configuraciones adecuadas para las etapas posteriores de evaluación y despliegue. 
+
+## Configuraciones y restricciones consideradas
+
+Los resultados se almacenaron en data/ml_outputs/metrics/.
 
 Se mantuvieron excluidas de la optimización:
 

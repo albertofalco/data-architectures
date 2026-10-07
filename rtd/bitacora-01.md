@@ -1,5 +1,9 @@
 # Bitácora 1: Instalación y configuración de MySQL
 
+## Objetivo
+
+Esta bitácora documenta la instalación y configuración inicial del servidor MySQL utilizado como base de datos de origen de la arquitectura, incluyendo la creación y administración de usuarios, la asignación de permisos, la configuración de MySQL Workbench y la creación de las bases de datos destinadas a los entornos de producción y prueba.
+
 ## Instalación del servidor MySQL y acceso
 
 Se instala MySQL Community Server en el entorno de Linux 64 Bits. Se accede como usuario `root` al servidor MySQL:

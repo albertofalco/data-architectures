@@ -1,5 +1,9 @@
 # Bitácora 6: Configuración del Data Warehouse
 
+## Objetivo
+
+Esta bitácora documenta la configuración e implementación del data warehouse basado en ClickHouse, incluyendo su contenerización mediante Docker, la integración con la base de datos MySQL, la definición de las capas de almacenamiento y enlace, la creación de diccionarios y vistas materializadas, los mecanismos de respaldo y validación de integridad y la exportación de los datos a formato PARQUET para su utilización por los modelos de aprendizaje automático. 
+
 ## Instalación de Docker para contenerización de aplicaciones
 
 Se instaló Docker en el servidor para la contenerización de ClickHouse OSS y la interfaz gráfica CH-UI.

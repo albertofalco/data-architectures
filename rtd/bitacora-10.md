@@ -1,5 +1,9 @@
 # Bitácora 10: Despliegue productivo
 
+## Objetivo
+
+Esta bitácora describe la implementación del entorno de despliegue productivo simulado utilizado para evaluar la arquitectura y los modelos seleccionados, incluyendo el flujo de incorporación incremental de registros, la inferencia por lotes, la persistencia de predicciones, la implementación de una API y una interfaz web mediante FastAPI, la utilización de Apache Superset para el consumo analítico y la contenerización de los servicios mediante Docker. 
+
 ## Arquitectura y flujo productivo
 
 La capa de despliegue diseñada se encuentra separada en tres capas:

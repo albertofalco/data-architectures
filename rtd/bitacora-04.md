@@ -1,5 +1,9 @@
 # Bitácora 4: Refactorización de scripts de normalización y conexión a base de datos
 
+## Objetivo
+
+Esta bitácora documenta la refactorización de los módulos de normalización y conexión con la base de datos, orientada a resolver inconsistencias en dimensiones compartidas y tipos de datos, incorporar mecanismos centralizados de mapeo y fortalecer las pruebas de integridad, estructura y correspondencia entre los archivos de origen y los datos almacenados en MySQL. 
+
 ## Contexto
 
 Durante la ejecución de las tareas de normalización (Bitácora 3), se identificaron varios aspectos técnicos que requirieron correcciones y mejoras:
