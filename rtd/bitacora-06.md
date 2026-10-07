@@ -93,7 +93,7 @@ Para llevar adelante la integración entre la base de datos y el almacén de dat
 
 - Se debieron otorgar permisos de usuario adicionales para el usuario que se conecta desde ClickHouse: SELECT, REPLICATION CLIENT, REPLICATION SLAVE, RELOAD.
 
-- Dado que el servidor ClickHouse se encuentra instalado en un contenedor de Docker, para la conexión entre ambas bases de datos, se debió agregar una línea en el archivo docker_compose.yml, Con esta configuración, el localhost del equipo anfitrión es reconocido dentro de docker como host.docker.internal.
+- Dado que el servidor ClickHouse se encuentra instalado en un contenedor de Docker, para la conexión entre ambas bases de datos, se debió agregar una línea en el archivo docker_compose.yml. Con esta configuración, el localhost del equipo anfitrión es reconocido dentro de docker como host.docker.internal.
 
 ```yaml
 services:
@@ -123,7 +123,7 @@ Para la implementación de esta alternativa, se debe aplicar una arquitectura de
 
 - Una capa de almacenamiento, que es donde se alojan nativamente los datos. Asegura la persistencia de los datos ante caídas del servidor MySQL.
 
-- Una capa de “staging” o de enlace, que actúa de “tunel” entre la base de datos en MySQL y el DW. EL motor es MySQL.
+- Una capa de “staging” o de enlace, que actúa de “tunel” entre la base de datos en MySQL y el DW. El motor es MySQL.
 
 ### Estructuración de la capa de almacenamiento
 

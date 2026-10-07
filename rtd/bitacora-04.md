@@ -30,7 +30,7 @@ Implementación de soporte para mappings.json: Se modificó el script de normali
 
 - Fase 2 - Normalización estándar: Procesamiento del resto de columnas categóricas.
 
-Optimización de tipos de datos: Se implementó la función convert_to_nullable_int() que convierte las columnas a float64 cuando todos los valores son enteros. Al implementar la función, se convierten a al formato Int64 permitiendo la coexistencia de valores enteros y nulos y manteniendo la compatibilidad con MySQL.
+Optimización de tipos de datos: Se implementó la función convert_to_nullable_int() que convierte las columnas a Int64 cuando todos los valores son enteros. Al implementar la función, se convierten a al formato Int64 permitiendo la coexistencia de valores enteros y nulos y manteniendo la compatibilidad con MySQL.
 
 Mejoras en las pruebas de integridad y estructura: Se realizaron mejoras sobre las pruebas de integridad y estructura de datos para la importación:
 

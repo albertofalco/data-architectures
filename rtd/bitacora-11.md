@@ -2,7 +2,7 @@
 
 ## Objetivo
 
-Esta bitácora registra las iteraciones de despliegue productivo, consignando datos sobre la inserciones, inferencias y mediciones operativas.
+Esta bitácora registra las iteraciones de despliegue productivo, consignando datos sobre las inserciones, inferencias y mediciones operativas.
 
 ## Resumen
 
@@ -105,7 +105,7 @@ A continuación, se describe el objetivo, resumen operativo y resumen por modelo
 
 <table>
   <tr><th>Iteración 4: prod_20260615_212056</th><th></th></tr>
-  <tr><td>Objetivo<br>Ejecutar un segundo lote representativo de 1.000 registros.</td><td>Resumen operativo<br>Filas insertadas en MySQL application_train: 1000<br>Rango holdout_rank: 2011-3010<br>Filas refrescadas en data_arch_dw.application_train: 1000<br>Filas refrescadas en data_arch_dw.rep_application_train: 1000<br>Filas persistidas en data_arch_dw.ml_predictions: 3000<br>Tiempo inserción MySQL: 0,567967 s<br>Tiempo refresh DW: 0,223786 s</td></tr>
+  <tr><td>Objetivo<br>Ejecutar un tercer lote representativo de 1.000 registros.</td><td>Resumen operativo<br>Filas insertadas en MySQL application_train: 1000<br>Rango holdout_rank: 2011-3010<br>Filas refrescadas en data_arch_dw.application_train: 1000<br>Filas refrescadas en data_arch_dw.rep_application_train: 1000<br>Filas persistidas en data_arch_dw.ml_predictions: 3000<br>Tiempo inserción MySQL: 0,567967 s<br>Tiempo refresh DW: 0,223786 s</td></tr>
   <tr><td colspan="2">Resumen por modelo<br><table>
   <tr><th>Modelo</th><th>Filas</th><th>Segundos</th><th>Filas/s</th><th>ms/fila</th><th>Precision</th><th>Recall</th><th>F1</th><th>ROC-AUC</th><th>PR-AUC</th></tr>
   <tr><td>xgboost</td><td>1000</td><td>3,38</td><td>366,15</td><td>2,73</td><td>0,4444</td><td>0,0533</td><td>0,0952</td><td>0,7950</td><td>0,2945</td></tr>

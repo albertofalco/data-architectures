@@ -173,7 +173,7 @@ Adicionalmente, el módulo prevé la obtención de métricas en un ambiente prod
 
 El comando para obtener el scoring sobre un lote productivo es el siguiente:
 
-```sql
+```bash
 python 04_ml_development/scripts/batch_score.py \
   --source clickhouse \
   --model-uri data/ml_outputs/models/random_forest_bundle.joblib \
