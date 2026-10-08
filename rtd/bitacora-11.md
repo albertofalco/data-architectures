@@ -58,98 +58,186 @@ El siguiente detalle muestra las métricas de consumo de memoria de cada iteraci
 
 A continuación, se describe el objetivo, resumen operativo y resumen por modelo de cada iteración:
 
-<table>
-  <tr><th>Iteración 1: prod_20260614_001</th><th></th></tr>
-  <tr><td>Objetivo<br>Realizar una primera prueba de funcionamiento del pipeline del módulo 05, sobre un lote de 10 registros.</td><td>Resumen operativo<br>Filas insertadas en MySQL application_train	10<br>Filas refrescadas en data_arch_dw.application_train: 10<br>Filas refrescadas en data_arch_dw.rep_application_train: 10<br>Filas persistidas en data_arch_dw.ml_predictions: 30<br>Storage ClickHouse data_arch_dw.ml_predictions: 4.474 bytes</td></tr>
-  <tr><td colspan="2">Resumen por modelo<br><table>
-  <tr><th>Modelo</th><th>Pred. 0</th><th>Pred. 1</th><th>Segundos</th><th>ROC-AUC</th><th>PR-AUC</th></tr>
-  <tr><td>xgboost</td><td>10</td><td>0</td><td>1,3195</td><td>0,6875</td><td>0,4167</td></tr>
-  <tr><td>tabpfn_mix</td><td>10</td><td>0</td><td>6,8484</td><td>0,8125</td><td>0,7000</td></tr>
-  <tr><td>pyod_autoencoder</td><td>9</td><td>1</td><td>6,1614</td><td>0,4375</td><td>0,2500</td></tr>
-</table></td></tr>
-</table>
+### Iteración 1: prod_20260614_001
 
-<table>
-  <tr><th>Iteración 2: prod_20260615_1000</th><th></th></tr>
-  <tr><td>Objetivo<br>Ejecutar las inferencias del módulo sobre un lote más representativo, de 1.000 registros. Evaluar que el selector de registros desestime los primeros 10 registros ya procesado en la iteración anterior. Evaluar el funcionamiento de los modelos seleccionados para el despliegue. Evaluar el impacto en ClickHouse y Apache Superset.<br>Los tres modelos se aplicaron sobre el mismo conjunto de 1000 SK_ID_CURR, permitiendo comparación directa entre resultados.</td><td>Resumen operativo<br>Filas insertadas en MySQL application_train: 1000<br>Rango holdout_rank: 11-1010<br>Filas refrescadas en data_arch_dw.application_train: 1000<br>Filas refrescadas en data_arch_dw.rep_application_train: 1000<br>Filas persistidas en data_arch_dw.ml_predictions: 3000<br>Tiempo inserción MySQL: 0,582203 s<br>Tiempo refresh DW: 0,188220 s</td></tr>
-  <tr><td colspan="2">Resumen por modelo<br><table>
-  <tr><th>Modelo</th><th>Filas</th><th>Segundos</th><th>Filas/s</th><th>ms/fila</th><th>Precision</th><th>Recall</th><th>F1</th><th>ROC-AUC</th><th>PR-AUC</th></tr>
-  <tr><td>xgboost</td><td>1000</td><td>3,84</td><td>326,34</td><td>3,06</td><td>0,7500</td><td>0,0405</td><td>0,0769</td><td>0,7750</td><td>0,2520</td></tr>
-  <tr><td>tabpfn_mix</td><td>1000</td><td>9,74</td><td>142,39</td><td>7,02</td><td>0,0000</td><td>0,0000</td><td>0,0000</td><td>0,7048</td><td>0,1775</td></tr>
-  <tr><td>pyod_autoencoder</td><td>1000</td><td>8,15</td><td>225,33</td><td>4,43</td><td>0,0696</td><td>0,1081</td><td>0,0847</td><td>0,4574</td><td>0,0680</td></tr>
-</table></td></tr>
-  <tr><td colspan="2">Distribución de predicciones<br><table>
-  <tr><th>Modelo</th><th>Pred. 0</th><th>Pred. 1</th><th>Total</th></tr>
-  <tr><td>xgboost</td><td>996</td><td>4</td><td>1000</td></tr>
-  <tr><td>tabpfn_mix</td><td>999</td><td>1</td><td>1000</td></tr>
-  <tr><td>pyod_autoencoder</td><td>885</td><td>115</td><td>1000</td></tr>
-</table></td></tr>
-</table>
+**Objetivo:**
 
-<table>
-  <tr><th>Iteración 3: prod_20260615_211402</th><th></th></tr>
-  <tr><td>Objetivo<br>Ejecutar un segundo lote representativo de 1.000 registros.</td><td>Resumen operativo<br>Filas insertadas en MySQL application_train: 1000<br>Rango holdout_rank: 1011-2010<br>Filas refrescadas en data_arch_dw.application_train: 1000<br>Filas refrescadas en data_arch_dw.rep_application_train: 1000<br>Filas persistidas en data_arch_dw.ml_predictions: 3000<br>Tiempo inserción MySQL: 0,660997 s<br>Tiempo refresh DW: 0,182532 s</td></tr>
-  <tr><td colspan="2">Resumen por modelo<br><table>
-  <tr><th>Modelo</th><th>Filas</th><th>Segundos</th><th>Filas/s</th><th>ms/fila</th><th>Precision</th><th>Recall</th><th>F1</th><th>ROC-AUC</th><th>PR-AUC</th></tr>
-  <tr><td>xgboost</td><td>1000</td><td>3,63</td><td>360,75</td><td>2,77</td><td>0,5000</td><td>0,0556</td><td>0,1000</td><td>0,7537</td><td>0,2271</td></tr>
-  <tr><td>tabpfn_mix</td><td>1000</td><td>9,83</td><td>141,98</td><td>7,04</td><td>0,0000</td><td>0,0000</td><td>0,0000</td><td>0,6622</td><td>0,1496</td></tr>
-  <tr><td>pyod_autoencoder</td><td>1000</td><td>8,22</td><td>223,79</td><td>4,46</td><td>0,0755</td><td>0,1111</td><td>0,0899</td><td>0,4943</td><td>0,0707</td></tr>
-</table></td></tr>
-  <tr><td colspan="2">Distribución de predicciones persistidas<br><table>
-  <tr><th>Modelo</th><th>Pred. 0</th><th>Pred. 1</th><th>Total</th></tr>
-  <tr><td>xgboost</td><td>992</td><td>8</td><td>1000</td></tr>
-  <tr><td>tabpfn_mix</td><td>996</td><td>4</td><td>1000</td></tr>
-  <tr><td>pyod_autoencoder</td><td>894</td><td>106</td><td>1000</td></tr>
-</table></td></tr>
-</table>
+Realizar una primera prueba de funcionamiento del pipeline del módulo 05, sobre un lote de 10 registros.
 
-<table>
-  <tr><th>Iteración 4: prod_20260615_212056</th><th></th></tr>
-  <tr><td>Objetivo<br>Ejecutar un tercer lote representativo de 1.000 registros.</td><td>Resumen operativo<br>Filas insertadas en MySQL application_train: 1000<br>Rango holdout_rank: 2011-3010<br>Filas refrescadas en data_arch_dw.application_train: 1000<br>Filas refrescadas en data_arch_dw.rep_application_train: 1000<br>Filas persistidas en data_arch_dw.ml_predictions: 3000<br>Tiempo inserción MySQL: 0,567967 s<br>Tiempo refresh DW: 0,223786 s</td></tr>
-  <tr><td colspan="2">Resumen por modelo<br><table>
-  <tr><th>Modelo</th><th>Filas</th><th>Segundos</th><th>Filas/s</th><th>ms/fila</th><th>Precision</th><th>Recall</th><th>F1</th><th>ROC-AUC</th><th>PR-AUC</th></tr>
-  <tr><td>xgboost</td><td>1000</td><td>3,38</td><td>366,15</td><td>2,73</td><td>0,4444</td><td>0,0533</td><td>0,0952</td><td>0,7950</td><td>0,2945</td></tr>
-  <tr><td>tabpfn_mix</td><td>1000</td><td>9,95</td><td>139,13</td><td>7,18</td><td>0,5000</td><td>0,0133</td><td>0,0260</td><td>0,6813</td><td>0,1599</td></tr>
-  <tr><td>pyod_autoencoder</td><td>1000</td><td>8,24</td><td>222,66</td><td>4,49</td><td>0,0734</td><td>0,1067</td><td>0,0870</td><td>0,4849</td><td>0,0779</td></tr>
-</table></td></tr>
-  <tr><td colspan="2">Distribución de predicciones persistidas<br><table>
-  <tr><th>Modelo</th><th>Pred. 0</th><th>Pred. 1</th><th>Total</th></tr>
-  <tr><td>xgboost</td><td>991</td><td>9</td><td>1000</td></tr>
-  <tr><td>tabpfn_mix</td><td>998</td><td>2</td><td>1000</td></tr>
-  <tr><td>pyod_autoencoder</td><td>891</td><td>109</td><td>1000</td></tr>
-</table></td></tr>
-</table>
+**Resumen operativo:**
 
-<table>
-  <tr><th>Iteración 5: prod_20260625_015311</th><th></th></tr>
-  <tr><td>Objetivo<br>Ejecutar un lote ampliado de 5.000 registros para obtener una referencia adicional de métricas analíticas y operativas sobre una escala mayor a las iteraciones previas.</td><td>Resumen operativo<br>Filas insertadas en MySQL application_train: 5000<br>Rango holdout_rank: 3011-8010<br>Filas refrescadas en data_arch_dw.application_train: 5000<br>Filas refrescadas en data_arch_dw.rep_application_train: 5000<br>Filas persistidas en data_arch_dw.ml_predictions: 15000<br>Tiempo inserción MySQL: 2,086178 s<br>Tiempo refresh DW: 1,928287 s</td></tr>
-  <tr><td colspan="2">Resumen por modelo<br><table>
-  <tr><th>Modelo</th><th>Filas</th><th>Segundos</th><th>Filas/s</th><th>ms/fila</th><th>Precision</th><th>Recall</th><th>F1</th><th>ROC-AUC</th><th>PR-AUC</th></tr>
-  <tr><td>xgboost</td><td>5000</td><td>5,42</td><td>1152,58</td><td>0,86</td><td>0,4583</td><td>0,0256</td><td>0,0486</td><td>0,7718</td><td>0,2750</td></tr>
-  <tr><td>tabpfn_mix</td><td>5000</td><td>19,21</td><td>305,09</td><td>3,27</td><td>0,3846</td><td>0,0117</td><td>0,0226</td><td>0,6904</td><td>0,1676</td></tr>
-  <tr><td>pyod_autoencoder</td><td>5000</td><td>9,87</td><td>818,93</td><td>1,22</td><td>0,0790</td><td>0,0956</td><td>0,0865</td><td>0,5022</td><td>0,0852</td></tr>
-</table></td></tr>
-  <tr><td colspan="2">Distribución de predicciones persistidas<br><table>
-  <tr><th>Modelo</th><th>Pred. 0</th><th>Pred. 1</th><th>Total</th></tr>
-  <tr><td>xgboost</td><td>4976</td><td>24</td><td>5000</td></tr>
-  <tr><td>tabpfn_mix</td><td>4987</td><td>13</td><td>5000</td></tr>
-  <tr><td>pyod_autoencoder</td><td>4481</td><td>519</td><td>5000</td></tr>
-</table></td></tr>
-</table>
+- Filas insertadas en MySQL application_train: 10
+- Filas refrescadas en data_arch_dw.application_train: 10
+- Filas refrescadas en data_arch_dw.rep_application_train: 10
+- Filas persistidas en data_arch_dw.ml_predictions: 30
+- Storage ClickHouse data_arch_dw.ml_predictions: 4.474 bytes
 
-<table>
-  <tr><th>Iteración 6: prod_20260625_020027</th><th></th></tr>
-  <tr><td>Objetivo<br>Ejecutar un lote ampliado de 10.000 registros para obtener una segunda referencia adicional de métricas analíticas y operativas sobre una escala mayor a las iteraciones previas.</td><td>Resumen operativo<br>Filas insertadas en MySQL application_train	10000<br>Rango holdout_rank: 8011-18010<br>Filas refrescadas en data_arch_dw.application_train: 10000<br>Filas refrescadas en data_arch_dw.rep_application_train: 10000<br>Filas persistidas en data_arch_dw.ml_predictions: 30000<br>Tiempo inserción MySQL: 3,696276 s<br>Tiempo refresh DW: 1,758682 s</td></tr>
-  <tr><td colspan="2">Resumen por modelo<br><table>
-  <tr><th>Modelo</th><th>Filas</th><th>Segundos</th><th>Filas/s</th><th>ms/fila</th><th>Precision</th><th>Recall</th><th>F1</th><th>ROC-AUC</th><th>PR-AUC</th></tr>
-  <tr><td>xgboost</td><td>10000</td><td>6,08</td><td>1827,87</td><td>0,54</td><td>0,6042</td><td>0,0372</td><td>0,0700</td><td>0,7789</td><td>0,2572</td></tr>
-  <tr><td>tabpfn_mix</td><td>10000</td><td>30,62</td><td>359,56</td><td>2,78</td><td>0,3030</td><td>0,0128</td><td>0,0246</td><td>0,7010</td><td>0,1720</td></tr>
-  <tr><td>pyod_autoencoder</td><td>10000</td><td>11,53</td><td>1301,94</td><td>0,76</td><td>0,0856</td><td>0,1090</td><td>0,0959</td><td>0,5241</td><td>0,0841</td></tr>
-</table></td></tr>
-  <tr><td colspan="2">Distribución de predicciones persistidas<br><table>
-  <tr><th>Modelo</th><th>Pred. 0</th><th>Pred. 1</th><th>Total</th></tr>
-  <tr><td>xgboost</td><td>9952</td><td>48</td><td>10000</td></tr>
-  <tr><td>tabpfn_mix</td><td>9967</td><td>33</td><td>10000</td></tr>
-  <tr><td>pyod_autoencoder</td><td>9007</td><td>993</td><td>10000</td></tr>
-</table></td></tr>
-</table>
+**Resumen por modelo:**
+
+| Modelo | Pred. 0 | Pred. 1 | Segundos | ROC-AUC | PR-AUC |
+|---|---:|---:|---:|---:|---:|
+| xgboost | 10 | 0 | 1,3195 | 0,6875 | 0,4167 |
+| tabpfn_mix | 10 | 0 | 6,8484 | 0,8125 | 0,7000 |
+| pyod_autoencoder | 9 | 1 | 6,1614 | 0,4375 | 0,2500 |
+
+### Iteración 2: prod_20260615_1000
+
+**Objetivo:**
+
+Ejecutar las inferencias del módulo sobre un lote más representativo, de 1.000 registros. Evaluar que el selector de registros desestime los primeros 10 registros ya procesado en la iteración anterior. Evaluar el funcionamiento de los modelos seleccionados para el despliegue. Evaluar el impacto en ClickHouse y Apache Superset.
+
+Los tres modelos se aplicaron sobre el mismo conjunto de 1000 SK_ID_CURR, permitiendo comparación directa entre resultados.
+
+**Resumen operativo:**
+
+- Filas insertadas en MySQL application_train: 1000
+- Rango holdout_rank: 11-1010
+- Filas refrescadas en data_arch_dw.application_train: 1000
+- Filas refrescadas en data_arch_dw.rep_application_train: 1000
+- Filas persistidas en data_arch_dw.ml_predictions: 3000
+- Tiempo inserción MySQL: 0,582203 s
+- Tiempo refresh DW: 0,188220 s
+
+**Resumen por modelo:**
+
+| Modelo | Filas | Segundos | Filas/s | ms/fila | Precision | Recall | F1 | ROC-AUC | PR-AUC |
+|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|
+| xgboost | 1000 | 3,84 | 326,34 | 3,06 | 0,7500 | 0,0405 | 0,0769 | 0,7750 | 0,2520 |
+| tabpfn_mix | 1000 | 9,74 | 142,39 | 7,02 | 0,0000 | 0,0000 | 0,0000 | 0,7048 | 0,1775 |
+| pyod_autoencoder | 1000 | 8,15 | 225,33 | 4,43 | 0,0696 | 0,1081 | 0,0847 | 0,4574 | 0,0680 |
+
+**Distribución de predicciones:**
+
+| Modelo | Pred. 0 | Pred. 1 | Total |
+|---|---:|---:|---:|
+| xgboost | 996 | 4 | 1000 |
+| tabpfn_mix | 999 | 1 | 1000 |
+| pyod_autoencoder | 885 | 115 | 1000 |
+
+### Iteración 3: prod_20260615_211402
+
+**Objetivo:**
+
+Ejecutar un segundo lote representativo de 1.000 registros.
+
+**Resumen operativo:**
+
+- Filas insertadas en MySQL application_train: 1000
+- Rango holdout_rank: 1011-2010
+- Filas refrescadas en data_arch_dw.application_train: 1000
+- Filas refrescadas en data_arch_dw.rep_application_train: 1000
+- Filas persistidas en data_arch_dw.ml_predictions: 3000
+- Tiempo inserción MySQL: 0,660997 s
+- Tiempo refresh DW: 0,182532 s
+
+**Resumen por modelo:**
+
+| Modelo | Filas | Segundos | Filas/s | ms/fila | Precision | Recall | F1 | ROC-AUC | PR-AUC |
+|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|
+| xgboost | 1000 | 3,63 | 360,75 | 2,77 | 0,5000 | 0,0556 | 0,1000 | 0,7537 | 0,2271 |
+| tabpfn_mix | 1000 | 9,83 | 141,98 | 7,04 | 0,0000 | 0,0000 | 0,0000 | 0,6622 | 0,1496 |
+| pyod_autoencoder | 1000 | 8,22 | 223,79 | 4,46 | 0,0755 | 0,1111 | 0,0899 | 0,4943 | 0,0707 |
+
+**Distribución de predicciones persistidas:**
+
+| Modelo | Pred. 0 | Pred. 1 | Total |
+|---|---:|---:|---:|
+| xgboost | 992 | 8 | 1000 |
+| tabpfn_mix | 996 | 4 | 1000 |
+| pyod_autoencoder | 894 | 106 | 1000 |
+
+### Iteración 4: prod_20260615_212056
+
+**Objetivo:**
+
+Ejecutar un tercer lote representativo de 1.000 registros.
+
+**Resumen operativo:**
+
+- Filas insertadas en MySQL application_train: 1000
+- Rango holdout_rank: 2011-3010
+- Filas refrescadas en data_arch_dw.application_train: 1000
+- Filas refrescadas en data_arch_dw.rep_application_train: 1000
+- Filas persistidas en data_arch_dw.ml_predictions: 3000
+- Tiempo inserción MySQL: 0,567967 s
+- Tiempo refresh DW: 0,223786 s
+
+**Resumen por modelo:**
+
+| Modelo | Filas | Segundos | Filas/s | ms/fila | Precision | Recall | F1 | ROC-AUC | PR-AUC |
+|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|
+| xgboost | 1000 | 3,38 | 366,15 | 2,73 | 0,4444 | 0,0533 | 0,0952 | 0,7950 | 0,2945 |
+| tabpfn_mix | 1000 | 9,95 | 139,13 | 7,18 | 0,5000 | 0,0133 | 0,0260 | 0,6813 | 0,1599 |
+| pyod_autoencoder | 1000 | 8,24 | 222,66 | 4,49 | 0,0734 | 0,1067 | 0,0870 | 0,4849 | 0,0779 |
+
+**Distribución de predicciones persistidas:**
+
+| Modelo | Pred. 0 | Pred. 1 | Total |
+|---|---:|---:|---:|
+| xgboost | 991 | 9 | 1000 |
+| tabpfn_mix | 998 | 2 | 1000 |
+| pyod_autoencoder | 891 | 109 | 1000 |
+
+### Iteración 5: prod_20260625_015311
+
+**Objetivo:**
+
+Ejecutar un lote ampliado de 5.000 registros para obtener una referencia adicional de métricas analíticas y operativas sobre una escala mayor a las iteraciones previas.
+
+**Resumen operativo:**
+
+- Filas insertadas en MySQL application_train: 5000
+- Rango holdout_rank: 3011-8010
+- Filas refrescadas en data_arch_dw.application_train: 5000
+- Filas refrescadas en data_arch_dw.rep_application_train: 5000
+- Filas persistidas en data_arch_dw.ml_predictions: 15000
+- Tiempo inserción MySQL: 2,086178 s
+- Tiempo refresh DW: 1,928287 s
+
+**Resumen por modelo:**
+
+| Modelo | Filas | Segundos | Filas/s | ms/fila | Precision | Recall | F1 | ROC-AUC | PR-AUC |
+|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|
+| xgboost | 5000 | 5,42 | 1152,58 | 0,86 | 0,4583 | 0,0256 | 0,0486 | 0,7718 | 0,2750 |
+| tabpfn_mix | 5000 | 19,21 | 305,09 | 3,27 | 0,3846 | 0,0117 | 0,0226 | 0,6904 | 0,1676 |
+| pyod_autoencoder | 5000 | 9,87 | 818,93 | 1,22 | 0,0790 | 0,0956 | 0,0865 | 0,5022 | 0,0852 |
+
+**Distribución de predicciones persistidas:**
+
+| Modelo | Pred. 0 | Pred. 1 | Total |
+|---|---:|---:|---:|
+| xgboost | 4976 | 24 | 5000 |
+| tabpfn_mix | 4987 | 13 | 5000 |
+| pyod_autoencoder | 4481 | 519 | 5000 |
+
+### Iteración 6: prod_20260625_020027
+
+**Objetivo:**
+
+Ejecutar un lote ampliado de 10.000 registros para obtener una segunda referencia adicional de métricas analíticas y operativas sobre una escala mayor a las iteraciones previas.
+
+**Resumen operativo:**
+
+- Filas insertadas en MySQL application_train: 10000
+- Rango holdout_rank: 8011-18010
+- Filas refrescadas en data_arch_dw.application_train: 10000
+- Filas refrescadas en data_arch_dw.rep_application_train: 10000
+- Filas persistidas en data_arch_dw.ml_predictions: 30000
+- Tiempo inserción MySQL: 3,696276 s
+- Tiempo refresh DW: 1,758682 s
+
+**Resumen por modelo:**
+
+| Modelo | Filas | Segundos | Filas/s | ms/fila | Precision | Recall | F1 | ROC-AUC | PR-AUC |
+|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|
+| xgboost | 10000 | 6,08 | 1827,87 | 0,54 | 0,6042 | 0,0372 | 0,0700 | 0,7789 | 0,2572 |
+| tabpfn_mix | 10000 | 30,62 | 359,56 | 2,78 | 0,3030 | 0,0128 | 0,0246 | 0,7010 | 0,1720 |
+| pyod_autoencoder | 10000 | 11,53 | 1301,94 | 0,76 | 0,0856 | 0,1090 | 0,0959 | 0,5241 | 0,0841 |
+
+**Distribución de predicciones persistidas:**
+
+| Modelo | Pred. 0 | Pred. 1 | Total |
+|---|---:|---:|---:|
+| xgboost | 9952 | 48 | 10000 |
+| tabpfn_mix | 9967 | 33 | 10000 |
+| pyod_autoencoder | 9007 | 993 | 10000 |

@@ -50,133 +50,210 @@ Configuraciones comunes:
 
 A continuación, se presentan los resultados de cada iteración de optimización:
 
-<table>
-  <tr><th>Ejecución 1: Random Forest</th><th></th></tr>
-  <tr><td>Espacio de hiperparametros<br><table>
-  <tr><th>Parametro</th><th>Rango</th></tr>
-  <tr><td>n_estimators</td><td>Entero entre 50 y 400</td></tr>
-  <tr><td>max_depth</td><td>Entero entre 3 y 20</td></tr>
-</table></td><td>Mejor resultado<br><table>
-  <tr><th>Campo</th><th>Valor</th></tr>
-  <tr><td>Mejor trial</td><td>15</td></tr>
-  <tr><td>validation_pr_auc</td><td>0,2077</td></tr>
-  <tr><td>n_estimators</td><td>399</td></tr>
-  <tr><td>max_depth</td><td>10</td></tr>
-  <tr><td>Duracion aproximada</td><td>21m 01s</td></tr>
-</table></td></tr>
-  <tr><td>Hallazgos<br>El mejor resultado obtenido mejora levemente el baseline de entrenamiento inicial (0,205659 -&gt; 0,207706).<br>Las profundidades bajas (max_depth 4-7) rindieron peor.<br>Las profundidades altas observadas (max_depth 16-20) tampoco mejoraron el mejor resultado.<br>La zona mas competitiva estuvo alrededor de max_depth 9-10.<br>No hubo fallos de ejecución.<br>El tuning fue costoso para la pequeña mejora obtenida, especialmente porque el modelo usa n_jobs=-1 y cada búsqueda reentrena sobre el dataset completo.<br>No se observaron fallos de memoria durante esta ejecución.</td><td></td></tr>
-</table>
+### Ejecución 1: Random Forest
 
-<table>
-  <tr><th>Ejecución 2: XGBoost</th><th></th></tr>
-  <tr><td>Espacio de hiperparametros<br><table>
-  <tr><th>Parametro</th><th>Rango</th></tr>
-  <tr><td>n_estimators</td><td>Entero entre 50 y 500</td></tr>
-  <tr><td>max_depth</td><td>Entero entre 2 y 10</td></tr>
-  <tr><td>learning_rate</td><td>Float logaritmico entre 0,01 y 0,2</td></tr>
-</table></td><td>Mejor resultado<br><table>
-  <tr><th>Campo</th><th>Valor</th></tr>
-  <tr><td>Mejor trial</td><td>12</td></tr>
-  <tr><td>validation_pr_auc</td><td>0,2708</td></tr>
-  <tr><td>n_estimators</td><td>485</td></tr>
-  <tr><td>max_depth</td><td>4</td></tr>
-  <tr><td>learning_rate</td><td>0,0655</td></tr>
-  <tr><td>Duracion aproximada</td><td>17m 30s</td></tr>
-</table></td></tr>
-  <tr><td>Hallazgos<br>El mejor resultado supera el baseline inicial de xgboost (0,269677 -&gt; 0,270760).<br>La mejora obtenida no es significativa, pero mantiene a xgboost como el mejor modelo local de la ronda.<br>Las tasas de aprendizaje muy bajas (alrededor de 0,01-0,02) tendieron a subentrenar en el presupuesto de estimadores analizado.<br>Profundidades altas de árboles no generaron incrementos en las métricas obtenidas.<br>No hubo fallos de ejecución.<br>No se observaron fallos de memoria durante esta ejecución.</td><td></td></tr>
-</table>
+**Espacio de hiperparametros:**
 
-<table>
-  <tr><th>Ejecución 3: Red neuronal</th><th></th></tr>
-  <tr><td>Espacio de hiperparámetros<br><table>
-  <tr><th>Parametro</th><th>Rango</th></tr>
-  <tr><td>epochs</td><td>Entero entre 5 y 50</td></tr>
-  <tr><td>learning_rate</td><td>Float logaritmico entre 0,0001 y 0,01</td></tr>
-</table><br>La arquitectura base se mantuvo igual que en config.yml: hidden_units=[256, 128] y batch_size=512.</td><td>Mejor resultado<br><table>
-  <tr><th>Campo</th><th>Valor</th></tr>
-  <tr><td>Mejor trial</td><td>14</td></tr>
-  <tr><td>validation_pr_auc</td><td>0,2356</td></tr>
-  <tr><td>epochs</td><td>5</td></tr>
-  <tr><td>learning_rate</td><td>0,0002</td></tr>
-  <tr><td>Duracion aproximada</td><td>25m 31s</td></tr>
-</table></td></tr>
-  <tr><td>Hallazgos<br>La optimización mejoró claramente el baseline de la red neuronal (0,162387 -&gt; 0,235624).<br>Las mejores combinaciones se concentraron en pocas epocas, especialmente epochs=5.<br>Ejecuciones con muchas epocas tendieron a empeorar PR-AUC y consumir mas tiempo.<br>Aunque la mejora relativa fue grande, el modelo sigue por debajo de xgboost optimizado en validation_pr_auc.<br>La ejecucion completó con éxito los 20 intentos previstos, pero MLPClassifier emitió ConvergenceWarning en las pruebas observadas porque alcanzó el maximo de iteraciones sin converger.<br>No se observaron fallos de memoria durante esta ejecucion.</td><td></td></tr>
-</table>
+| Parametro | Rango |
+|---|---|
+| n_estimators | Entero entre 50 y 400 |
+| max_depth | Entero entre 3 y 20 |
 
-<table>
-  <tr><th>Ejecución 4: TabICL</th><th>Esta ronda no es comparable directamente contra los modelos anteriores porque se ejecutó sobre una muestra de 2.000 registros, debido a las limitaciones observadas con algunos modelos. El split fue entonces de 1.200 filas para el conjunto de entrenamiento, 400 para el de validación y 400 para el de prueba.</th></tr>
-  <tr><td>Espacio de hiperparámetros<br><table>
-  <tr><th>Parámetro</th><th>Valores</th></tr>
-  <tr><td>n_estimators</td><td>[2, 4, 8]</td></tr>
-  <tr><td>batch_size</td><td>[2, 4]</td></tr>
-  <tr><td>offload_mode</td><td>auto</td></tr>
-  <tr><td>disk_offload_dir</td><td>./data/ml_outputs/<br>foundation_cache/tabicl_offload/</td></tr>
-  <tr><td>verbose</td><td>true</td></tr>
-</table></td><td>Mejor resultado<br><table>
-  <tr><th>Campo</th><th>Valor</th></tr>
-  <tr><td>Mejor trial</td><td>0</td></tr>
-  <tr><td>validation_pr_auc</td><td>0,1684</td></tr>
-  <tr><td>validation_roc_auc</td><td>0,6455</td></tr>
-  <tr><td>n_estimators</td><td>2</td></tr>
-  <tr><td>batch_size</td><td>2</td></tr>
-  <tr><td>Duracion total aproximada</td><td>27m 01s</td></tr>
-  <tr><td>Peak RSS maximo observado</td><td>21.261 MB</td></tr>
-</table></td></tr>
-  <tr><td>Hallazgos<br>El mejor resultado obtenido mejora levemente el baseline sobre la muestra de 2.000 registros (0,165246 -&gt; 0,168424).<br>Reducir n_estimators de 8 a 2 mejoro la métrica de validación PR-AUC y redujo mucho el tiempo de prediccion.<br>batch_size no cambio las metricas para un mismo n_estimators, pero con n_estimators=8 y batch_size=4 se observó el mayor pico de memoria.<br>El costo sigue concentrado en validation_predict_seconds; fit_seconds quedó alrededor de 1,6-1,8 segundos en todos los intentos.<br>Durante el preprocesamiento se generaron mensajes de advertencia por columnas completamente nulas en la muestra: previous__rate_interest_primary__std y previous__rate_interest_privileged__std.<br>No se generaron códigos por fallos de memoria, pero el pico de memoria utilizada se acercó a los 21GB observados en entrenamiento.</td><td></td></tr>
-</table>
+**Mejor resultado:**
 
-<table>
-  <tr><th>Ejecución 5: TabPFNMix</th><th>Esta ronda también se hizo sobre muestra estratificada de 2.000 filas y con busqueda grid propia dentro de la imagen Docker foundation.</th></tr>
-  <tr><td>Espacio de hiperparámetros<br><table>
-  <tr><th>Parámetro</th><th>Valores</th></tr>
-  <tr><td>max_epochs</td><td>[0, 1]</td></tr>
-  <tr><td>n_ensembles</td><td>[1, 2, 4]</td></tr>
-  <tr><td>dynamic_stacking</td><td>false</td></tr>
-  <tr><td>num_bag_folds</td><td>0</td></tr>
-  <tr><td>num_stack_levels</td><td>0</td></tr>
-  <tr><td>fit_weighted_ensemble</td><td>false</td></tr>
-  <tr><td>predictor_path</td><td>./data/ml_outputs/<br>models/autogluon/<br>tabpfn_mix_tuning/trial_XX/</td></tr>
-</table></td><td>Mejor resultado<br><table>
-  <tr><th>Campo</th><th>Valor</th></tr>
-  <tr><td>Mejor trial</td><td>0</td></tr>
-  <tr><td>validation_pr_auc</td><td>0,2824</td></tr>
-  <tr><td>validation_roc_auc</td><td>0,6715</td></tr>
-  <tr><td>max_epochs</td><td>0</td></tr>
-  <tr><td>n_ensembles</td><td>1</td></tr>
-  <tr><td>Duracion total aproximada</td><td>56s</td></tr>
-  <tr><td>Peak RSS maximo observado</td><td>1.941 MB</td></tr>
-</table></td></tr>
-  <tr><td>Hallazgos<br>El baseline de entrenamiento fue la mejor combinación del espacio de búsqueda (0,282406 -&gt; 0,282406).<br>Aumentar n_ensembles con max_epochs=0 no cambió las métricas y aumento el tiempo de inferencia de validation.<br>Usar max_epochs=1 empeoró PR-AUC hasta 0,231300 en esta muestra, aunque mantuvo tiempos y memoria operables.<br>tabpfn_mix sigue siendo mucho mas eficiente que tabicl: el mayor pico de memoria fue de 1.941,055 MB frente a 21.261,246 MB en tabicl, y la ejecución completa duró menos de un minuto.<br>Durante el preprocesamiento se generaron las advertencias señaladas en el modelo anterior.<br>No hubo código 137, errores de memoria ni intentos fallidos.</td><td></td></tr>
-</table>
+| Campo | Valor |
+|---|---:|
+| Mejor trial | 15 |
+| validation_pr_auc | 0,2077 |
+| n_estimators | 399 |
+| max_depth | 10 |
+| Duracion aproximada | 21m 01s |
 
-<table>
-  <tr><th>Ejecución 6: PyOD AutoEncoder</th><th>Al igual que los casos anteriores, esta ronda se ejecutó sobre una muestra estratificada de 2.000 observaciones, con búsqueda grid propia dentro de la imagen Docker foundation.</th></tr>
-  <tr><td>Espacio de hiperparámetros<br><table>
-  <tr><th>Parámetro</th><th>Valores</th></tr>
-  <tr><td>contamination</td><td>[0,05, 0,081]</td></tr>
-  <tr><td>epoch_num</td><td>[10, 20]</td></tr>
-  <tr><td>hidden_neuron_list</td><td>[[64, 32, 32, 64], [128, 64, 64, 128]]</td></tr>
-  <tr><td>train_normals_only</td><td>true</td></tr>
-  <tr><td>batch_size</td><td>256</td></tr>
-  <tr><td>learning_rate</td><td>0,001</td></tr>
-  <tr><td>random_state</td><td>42</td></tr>
-  <tr><td>verbose</td><td>0</td></tr>
-</table></td><td>Mejor resultado<br><table>
-  <tr><th>Campo</th><th>Valor</th></tr>
-  <tr><td>Mejor trial</td><td>0</td></tr>
-  <tr><td>validation_pr_auc</td><td>0,1129</td></tr>
-  <tr><td>validation_roc_auc</td><td>0,6145</td></tr>
-  <tr><td>validation_precision</td><td>0,1379</td></tr>
-  <tr><td>validation_recall</td><td>0,1250</td></tr>
-  <tr><td>validation_f1</td><td>0,1311</td></tr>
-  <tr><td>contamination</td><td>0,05</td></tr>
-  <tr><td>epoch_num</td><td>10</td></tr>
-  <tr><td>hidden_neuron_list</td><td>[64, 32,<br>32, 64]</td></tr>
-  <tr><td>Duracion total aproximada</td><td>9s</td></tr>
-  <tr><td>Peak RSS maximo observado</td><td>974 MB</td></tr>
-</table></td></tr>
-  <tr><td>Hallazgos<br>El mejor resultado obtenido mejoró al obtenido del modelo baseline (0,108287 -&gt; 0,112899).<br>La arquitectura compacta [64, 32, 32, 64] fue consistentemente mejor que la arquitectura base [128, 64, 64, 128] en PR-AUC.<br>epoch_num=10 fue suficiente; aumentar a 20 no mejoró la métrica a maximizar.<br>Cambiar contamination de 0,081 a 0,05 no cambió PR-AUC para la misma arquitectura y epocas, pero si mejoro precision y F1 en el mejor intento.<br>El modelo sigue siendo muy rápido y liviano, aunque el desempeño predictivo quedó bastante por debajo de los modelos supervisados y de tabpfn_mix.<br>Durante el preprocesamiento se generaron los mensajes de advertencia por columnas completamente nulas.<br>No se obtuvo código 137, errores de memoria ni intentos fallidos.<br>El primer intento generó un mayor tiempo de fitting que los siguientes, probablemente por inicializacion/carga de PyTorch/PyOD dentro del proceso.</td><td></td></tr>
-</table>
+**Hallazgos:**
+
+- El mejor resultado obtenido mejora levemente el baseline de entrenamiento inicial (0,205659 -> 0,207706).
+- Las profundidades bajas (max_depth 4-7) rindieron peor.
+- Las profundidades altas observadas (max_depth 16-20) tampoco mejoraron el mejor resultado.
+- La zona mas competitiva estuvo alrededor de max_depth 9-10.
+- No hubo fallos de ejecución.
+- El tuning fue costoso para la pequeña mejora obtenida, especialmente porque el modelo usa n_jobs=-1 y cada búsqueda reentrena sobre el dataset completo.
+- No se observaron fallos de memoria durante esta ejecución.
+
+### Ejecución 2: XGBoost
+
+**Espacio de hiperparametros:**
+
+| Parametro | Rango |
+|---|---|
+| n_estimators | Entero entre 50 y 500 |
+| max_depth | Entero entre 2 y 10 |
+| learning_rate | Float logaritmico entre 0,01 y 0,2 |
+
+**Mejor resultado:**
+
+| Campo | Valor |
+|---|---:|
+| Mejor trial | 12 |
+| validation_pr_auc | 0,2708 |
+| n_estimators | 485 |
+| max_depth | 4 |
+| learning_rate | 0,0655 |
+| Duracion aproximada | 17m 30s |
+
+**Hallazgos:**
+
+- El mejor resultado supera el baseline inicial de xgboost (0,269677 -> 0,270760).
+- La mejora obtenida no es significativa, pero mantiene a xgboost como el mejor modelo local de la ronda.
+- Las tasas de aprendizaje muy bajas (alrededor de 0,01-0,02) tendieron a subentrenar en el presupuesto de estimadores analizado.
+- Profundidades altas de árboles no generaron incrementos en las métricas obtenidas.
+- No hubo fallos de ejecución.
+- No se observaron fallos de memoria durante esta ejecución.
+
+### Ejecución 3: Red neuronal
+
+**Espacio de hiperparámetros:**
+
+| Parametro | Rango |
+|---|---|
+| epochs | Entero entre 5 y 50 |
+| learning_rate | Float logaritmico entre 0,0001 y 0,01 |
+
+La arquitectura base se mantuvo igual que en config.yml: hidden_units=[256, 128] y batch_size=512.
+
+**Mejor resultado:**
+
+| Campo | Valor |
+|---|---:|
+| Mejor trial | 14 |
+| validation_pr_auc | 0,2356 |
+| epochs | 5 |
+| learning_rate | 0,0002 |
+| Duracion aproximada | 25m 31s |
+
+**Hallazgos:**
+
+- La optimización mejoró claramente el baseline de la red neuronal (0,162387 -> 0,235624).
+- Las mejores combinaciones se concentraron en pocas epocas, especialmente epochs=5.
+- Ejecuciones con muchas epocas tendieron a empeorar PR-AUC y consumir mas tiempo.
+- Aunque la mejora relativa fue grande, el modelo sigue por debajo de xgboost optimizado en validation_pr_auc.
+- La ejecucion completó con éxito los 20 intentos previstos, pero MLPClassifier emitió ConvergenceWarning en las pruebas observadas porque alcanzó el maximo de iteraciones sin converger.
+- No se observaron fallos de memoria durante esta ejecucion.
+
+### Ejecución 4: TabICL
+
+Esta ronda no es comparable directamente contra los modelos anteriores porque se ejecutó sobre una muestra de 2.000 registros, debido a las limitaciones observadas con algunos modelos. El split fue entonces de 1.200 filas para el conjunto de entrenamiento, 400 para el de validación y 400 para el de prueba.
+
+**Espacio de hiperparámetros:**
+
+| Parámetro | Valores |
+|---|---|
+| n_estimators | [2, 4, 8] |
+| batch_size | [2, 4] |
+| offload_mode | auto |
+| disk_offload_dir | ./data/ml_outputs/foundation_cache/tabicl_offload/ |
+| verbose | true |
+
+**Mejor resultado:**
+
+| Campo | Valor |
+|---|---:|
+| Mejor trial | 0 |
+| validation_pr_auc | 0,1684 |
+| validation_roc_auc | 0,6455 |
+| n_estimators | 2 |
+| batch_size | 2 |
+| Duracion total aproximada | 27m 01s |
+| Peak RSS maximo observado | 21.261 MB |
+
+**Hallazgos:**
+
+- El mejor resultado obtenido mejora levemente el baseline sobre la muestra de 2.000 registros (0,165246 -> 0,168424).
+- Reducir n_estimators de 8 a 2 mejoro la métrica de validación PR-AUC y redujo mucho el tiempo de prediccion.
+- batch_size no cambio las metricas para un mismo n_estimators, pero con n_estimators=8 y batch_size=4 se observó el mayor pico de memoria.
+- El costo sigue concentrado en validation_predict_seconds; fit_seconds quedó alrededor de 1,6-1,8 segundos en todos los intentos.
+- Durante el preprocesamiento se generaron mensajes de advertencia por columnas completamente nulas en la muestra: previous__rate_interest_primary__std y previous__rate_interest_privileged__std.
+- No se generaron códigos por fallos de memoria, pero el pico de memoria utilizada se acercó a los 21GB observados en entrenamiento.
+
+### Ejecución 5: TabPFNMix
+
+Esta ronda también se hizo sobre muestra estratificada de 2.000 filas y con busqueda grid propia dentro de la imagen Docker foundation.
+
+**Espacio de hiperparámetros:**
+
+| Parámetro | Valores |
+|---|---|
+| max_epochs | [0, 1] |
+| n_ensembles | [1, 2, 4] |
+| dynamic_stacking | false |
+| num_bag_folds | 0 |
+| num_stack_levels | 0 |
+| fit_weighted_ensemble | false |
+| predictor_path | ./data/ml_outputs/models/autogluon/tabpfn_mix_tuning/trial_XX/ |
+
+**Mejor resultado:**
+
+| Campo | Valor |
+|---|---:|
+| Mejor trial | 0 |
+| validation_pr_auc | 0,2824 |
+| validation_roc_auc | 0,6715 |
+| max_epochs | 0 |
+| n_ensembles | 1 |
+| Duracion total aproximada | 56s |
+| Peak RSS maximo observado | 1.941 MB |
+
+**Hallazgos:**
+
+- El baseline de entrenamiento fue la mejor combinación del espacio de búsqueda (0,282406 -> 0,282406).
+- Aumentar n_ensembles con max_epochs=0 no cambió las métricas y aumento el tiempo de inferencia de validation.
+- Usar max_epochs=1 empeoró PR-AUC hasta 0,231300 en esta muestra, aunque mantuvo tiempos y memoria operables.
+- tabpfn_mix sigue siendo mucho mas eficiente que tabicl: el mayor pico de memoria fue de 1.941,055 MB frente a 21.261,246 MB en tabicl, y la ejecución completa duró menos de un minuto.
+- Durante el preprocesamiento se generaron las advertencias señaladas en el modelo anterior.
+- No hubo código 137, errores de memoria ni intentos fallidos.
+
+### Ejecución 6: PyOD AutoEncoder
+
+Al igual que los casos anteriores, esta ronda se ejecutó sobre una muestra estratificada de 2.000 observaciones, con búsqueda grid propia dentro de la imagen Docker foundation.
+
+**Espacio de hiperparámetros:**
+
+| Parámetro | Valores |
+|---|---|
+| contamination | [0,05, 0,081] |
+| epoch_num | [10, 20] |
+| hidden_neuron_list | [[64, 32, 32, 64], [128, 64, 64, 128]] |
+| train_normals_only | true |
+| batch_size | 256 |
+| learning_rate | 0,001 |
+| random_state | 42 |
+| verbose | 0 |
+
+**Mejor resultado:**
+
+| Campo | Valor |
+|---|---:|
+| Mejor trial | 0 |
+| validation_pr_auc | 0,1129 |
+| validation_roc_auc | 0,6145 |
+| validation_precision | 0,1379 |
+| validation_recall | 0,1250 |
+| validation_f1 | 0,1311 |
+| contamination | 0,05 |
+| epoch_num | 10 |
+| hidden_neuron_list | [64, 32, 32, 64] |
+| Duracion total aproximada | 9s |
+| Peak RSS maximo observado | 974 MB |
+
+**Hallazgos:**
+
+- El mejor resultado obtenido mejoró al obtenido del modelo baseline (0,108287 -> 0,112899).
+- La arquitectura compacta [64, 32, 32, 64] fue consistentemente mejor que la arquitectura base [128, 64, 64, 128] en PR-AUC.
+- epoch_num=10 fue suficiente; aumentar a 20 no mejoró la métrica a maximizar.
+- Cambiar contamination de 0,081 a 0,05 no cambió PR-AUC para la misma arquitectura y epocas, pero si mejoro precision y F1 en el mejor intento.
+- El modelo sigue siendo muy rápido y liviano, aunque el desempeño predictivo quedó bastante por debajo de los modelos supervisados y de tabpfn_mix.
+- Durante el preprocesamiento se generaron los mensajes de advertencia por columnas completamente nulas.
+- No se obtuvo código 137, errores de memoria ni intentos fallidos.
+- El primer intento generó un mayor tiempo de fitting que los siguientes, probablemente por inicializacion/carga de PyTorch/PyOD dentro del proceso.
 
 ## Conclusiones
 
