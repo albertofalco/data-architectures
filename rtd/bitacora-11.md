@@ -84,7 +84,7 @@ Realizar una primera prueba de funcionamiento del pipeline del módulo 05, sobre
 
 **Objetivo:**
 
-Ejecutar las inferencias del módulo sobre un lote más representativo, de 1.000 registros. Evaluar que el selector de registros desestime los primeros 10 registros ya procesado en la iteración anterior. Evaluar el funcionamiento de los modelos seleccionados para el despliegue. Evaluar el impacto en ClickHouse y Apache Superset.
+Ejecutar las inferencias del módulo sobre un lote más representativo, de 1.000 registros. Evaluar que el selector de registros desestime los primeros 10 registros ya procesados en la iteración anterior. Evaluar el funcionamiento de los modelos seleccionados para el despliegue. Evaluar el impacto en ClickHouse y Apache Superset.
 
 Los tres modelos se aplicaron sobre el mismo conjunto de 1000 SK_ID_CURR, permitiendo comparación directa entre resultados.
 
